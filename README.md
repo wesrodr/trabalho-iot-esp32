@@ -81,7 +81,13 @@ Teste a função acessando `https://SEU-DOMINIO/api/dashboard?hours=24`. Com uma
 2. Use a URL do projeto e uma chave publishable/anon em `SUPABASE_URL` e `SUPABASE_KEY`.
 3. Mantenha `IOT_DEMO_MODE=false` no ambiente conectado ao banco.
 
-O backend lê somente `id`, `numero_evento` e `data_hora`, e não devolve a chave ao navegador. A consulta considera até 1.000 eventos mais recentes.
+Execute também [`supabase/atividade_sensor.sql`](supabase/atividade_sensor.sql) para criar a tabela de não execuções, caso necessário, e permitir sua leitura pelo painel. O script preserva os registros existentes e não configura permissões de escrita.
+
+O backend consulta `eventos` (`id`, `numero_evento`, `data_hora`) e `atividade_sensor` (`id`, `data_hora`), sem devolver a chave ao navegador. Cada registro de `atividade_sensor` representa uma leitura sem movimento; sua data deve ser `timestamptz`, por exemplo `2026-09-29T14:00:00-03:00`. A consulta considera até 1.000 registros por tabela e exibe um aviso quando atinge esse limite.
+
+O gráfico apresenta contagens separadas para movimento e ausência de movimento. Os históricos combinam as duas tabelas por data, com filtros por tipo e exportação CSV identificando a tabela de origem. Ausência de registros não é interpretada como ausência de movimento.
+
+O firmware incluído ainda envia apenas execuções para `eventos`. Para receber não execuções reais, o dispositivo precisa gravar as leituras sem movimento em `atividade_sensor` com as permissões de escrita adequadas.
 
 **Atenção à segurança:** a política atual permite inserção anônima na tabela `eventos`, então qualquer pessoa com a chave pública pode enviar registros válidos. Não use a chave `service_role` no firmware, no frontend nem no GitHub. Para uso em produção, restrinja a escrita com autenticação ou use uma Edge Function protegida.
 
@@ -97,7 +103,7 @@ O ESP32 envia cada detecção do PIR para a API REST do Supabase, na tabela `eve
 - Permite visualizar períodos de uma hora, 24 horas e sete dias.
 - Filtra o histórico e exporta os resultados em CSV.
 - Exibe horários em UTC−3 e agrupa reenvios com o mesmo número e horário.
-- Mostra a última detecção registrada; não informa se o sensor está conectado nem se há movimento neste instante.
+- Mostra a última leitura registrada, com ou sem movimento; não informa se o sensor está conectado nem se há movimento neste instante.
 - A demonstração não grava dados no Supabase nem controla um dispositivo real.
 
 ## Testes

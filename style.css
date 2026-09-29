@@ -727,3 +727,6 @@ h2{font-size:16px}
   .section-heading h2 { font-size: 23px; }
   .refresh-info { width: fit-content; max-width: 100%; margin-top: 13px; }
 }
+
+.chart-bar-inactive{fill:#21a67e}
+.chart-bar-inactive:hover,.chart-bar-inactive:focus{fill:#16845f}

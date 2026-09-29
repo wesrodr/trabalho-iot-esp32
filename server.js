@@ -10,7 +10,7 @@ function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
   const url = env.SUPABASE_URL || '';
   const key = env.SUPABASE_KEY || '';
   const demo = env.IOT_DEMO_MODE === 'true' || (!url && !key && env.IOT_DEMO_MODE !== 'false');
-  const demoEvents = Monitor.demoReadings();
+  const demoEvents = Monitor.combineReadings(Monitor.demoReadings(), Monitor.normalizeActivity(Array.from({ length: 126 }, (_, i) => ({ id: i + 1, data_hora: new Date(Date.now() - (i * 76 + 10) * 60000).toISOString() }))));
   function json(res, status, body) {
     res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify(body));
@@ -26,14 +26,21 @@ function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
       if (!key || projectUrl.protocol !== 'https:' || !projectUrl.hostname.endsWith('.supabase.co') || projectUrl.username || projectUrl.password || projectUrl.port) throw new Error('Invalid server configuration');
       const headers = { apikey: key };
       if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
-      // data_hora is DD/MM/YYYY text, so date ordering/filtering is done after parsing.
-      // data_hora is DD/MM/YYYY text, so date ordering/filtering is done after parsing.
-      const query = { select: 'id,numero_evento,data_hora', order: 'id.desc', limit: '1000' };
-      const response = await fetchImpl(`${projectUrl.origin}/rest/v1/eventos?${new URLSearchParams(query)}`, { headers, signal: AbortSignal.timeout(12000), cache: 'no-store' });
-      if (!response.ok) throw new Error('Upstream unavailable');
-      const data = await response.json();
-      if (!Array.isArray(data)) throw new Error('Invalid events');
-      return json(res, 200, { mode: 'live', ...Monitor.normalizeEvents(data), limited: data.length >= 1000 });
+      const results = await Promise.allSettled([
+        ['eventos', { select: 'id,numero_evento,data_hora', order: 'id.desc', limit: '1000' }],
+        ['atividade_sensor', { select: 'id,data_hora', order: 'data_hora.desc.nullslast,id.desc', limit: '1000' }]
+      ].map(async ([table, query]) => {
+        const response = await fetchImpl(`${projectUrl.origin}/rest/v1/${table}?${new URLSearchParams(query)}`, { headers, signal: AbortSignal.timeout(12000), cache: 'no-store' });
+        if (!response.ok) throw new Error('Upstream unavailable');
+        const rows = await response.json();
+        if (!Array.isArray(rows)) throw new Error('Invalid readings');
+        return rows;
+      }));
+      if (results.some(result => result.status === 'rejected')) throw new Error('Upstream unavailable');
+      const [data, activity] = results.map(result => result.value);
+      const normalized = Monitor.normalizeEvents(data);
+      const events = Monitor.combineReadings(normalized.events, Monitor.normalizeActivity(activity));
+      return json(res, 200, { mode: 'live', ...normalized, events, latest: events[0] || null, undated: events.filter(row => !row.recorded_at).length, limited: data.length >= 1000 || activity.length >= 1000 });
     } catch {
       return json(res, 503, { error: 'Não foi possível atualizar o monitoramento. Tentaremos novamente em alguns segundos.' });
     }

@@ -30,7 +30,7 @@
       // Counter alone is not an ID: the serial R command resets it.
       if (key && seen.has(key)) { duplicates++; continue; }
       if (key) seen.add(key);
-      events.push({ id: row.id, numero_evento: row.numero_evento, data_hora: row.data_hora, recorded_at });
+      events.push({ id: row.id, numero_evento: row.numero_evento, data_hora: row.data_hora, recorded_at, source: 'eventos' });
     }
     events.sort((a, b) => {
       const dateDiff = (Date.parse(b.recorded_at) || 0) - (Date.parse(a.recorded_at) || 0);
@@ -43,14 +43,25 @@
     const time = Date.parse(row.recorded_at);
     return Number.isFinite(time) && time >= now - hours * 3600000 && time <= now;
   }
+  function normalizeActivity(rows) {
+    return rows.map(row => {
+      if (!row || !integer(row.id) || (row.data_hora !== null && (typeof row.data_hora !== 'string' || !Number.isFinite(Date.parse(row.data_hora))))) throw new Error('Invalid atividade_sensor row');
+      const recorded_at = row.data_hora === null ? null : new Date(row.data_hora).toISOString();
+      return { id: row.id, numero_evento: null, data_hora: recorded_at ? deviceDate(Date.parse(recorded_at)) : null, recorded_at, source: 'atividade_sensor' };
+    });
+  }
+  function combineReadings(events, activity) {
+    // IDs belong to different tables and must never be deduplicated across sources.
+    return [...events, ...activity].sort((a, b) => (Date.parse(b.recorded_at) || 0) - (Date.parse(a.recorded_at) || 0) || (a.source || 'eventos').localeCompare(b.source || 'eventos') || (BigInt(a.id) > BigInt(b.id) ? -1 : BigInt(a.id) < BigInt(b.id) ? 1 : 0));
+  }
   function aggregate(readings, hours, now = Date.now()) {
     const count = hours === 1 ? 12 : hours === 168 ? 7 : 24;
     const step = hours * 3600000 / count;
     const start = now - hours * 3600000;
-    const bins = Array.from({ length: count }, (_, index) => ({ start: start + index * step, end: start + (index + 1) * step, count: 0 }));
+    const bins = Array.from({ length: count }, (_, index) => ({ start: start + index * step, end: start + (index + 1) * step, count: 0, inactive: 0 }));
     for (const row of readings) {
       if (!validReading(row) || !inPeriod(row, hours, now)) continue;
-      bins[Math.min(count - 1, Math.floor((Date.parse(row.recorded_at) - start) / step))].count++;
+      bins[Math.min(count - 1, Math.floor((Date.parse(row.recorded_at) - start) / step))][row.source === 'atividade_sensor' ? 'inactive' : 'count']++;
     }
     return bins;
   }
@@ -59,7 +70,7 @@
     return new Date(Date.parse(value) - 3 * 3600000).toISOString().slice(0, 10);
   }
   function filterReadings(readings, status = 'all', date = '') {
-    return readings.filter(row => (!date || dateKey(row.recorded_at) === date) && (status === 'all' || (status === 'dated' ? !!row.recorded_at : !row.recorded_at)));
+    return readings.filter(row => (!date || dateKey(row.recorded_at) === date) && (status === 'all' || (status === 'motion' ? row.source !== 'atividade_sensor' : status === 'inactive' ? row.source === 'atividade_sensor' : status === 'dated' ? !!row.recorded_at : !row.recorded_at)));
   }
   function deviceDate(value) {
     const d = new Date(value - 3 * 3600000);
@@ -73,7 +84,7 @@
   }
   function csv(readings) {
     const escape = value => '"' + String(value ?? '').replace(/^[=+@-]/, "'$&").replace(/"/g, '""') + '"';
-    return '\uFEFF' + ['ID no banco;Numero do evento;Data e hora (UTC-3);Status', ...readings.map(row => [row.id, row.numero_evento, row.recorded_at ? row.data_hora : 'Data indisponível', 'Movimento detectado'].map(escape).join(';'))].join('\r\n');
+    return '\uFEFF' + ['ID no banco;Numero do evento;Data e hora (UTC-3);Status;Tabela', ...readings.map(row => [row.id, row.numero_evento, row.recorded_at ? row.data_hora : 'Data indisponível', row.source === 'atividade_sensor' ? 'Sem movimento' : 'Movimento detectado', row.source || 'eventos'].map(escape).join(';'))].join('\r\n');
   }
-  return { timeZone, parseDeviceDate, normalizeEvents, validReading, inPeriod, dateKey, deviceDate, aggregate, filterReadings, demoReadings, csv };
+  return { timeZone, parseDeviceDate, normalizeEvents, normalizeActivity, combineReadings, validReading, inPeriod, dateKey, deviceDate, aggregate, filterReadings, demoReadings, csv };
 });

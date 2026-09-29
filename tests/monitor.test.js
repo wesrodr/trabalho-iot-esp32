@@ -2,6 +2,25 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { parseDeviceDate, normalizeEvents, aggregate, filterReadings, demoReadings, csv, deviceDate } = require('../monitor.js');
 const now = Date.parse('2026-09-28T15:00:00Z');
+const { normalizeActivity, combineReadings } = require('../monitor');
+
+test('inactivity uses timestamptz and stays separate from executions with the same ID', () => {
+  const motion = normalizeEvents([{ id: 1, numero_evento: 3, data_hora: '28/09/2026 11:59:00' }]).events;
+  const activity = normalizeActivity([{ id: 1, data_hora: '2026-09-28T12:00:00-03:00' }, { id: 2, data_hora: null }]);
+  const rows = combineReadings(motion, activity);
+  assert.equal(rows.length, 3);
+  assert.equal(rows[0].source, 'atividade_sensor');
+  assert.equal(rows[0].recorded_at, '2026-09-28T15:00:00.000Z');
+  const bins = aggregate(rows, 1, now);
+  assert.equal(bins.at(-1).count, 1);
+  assert.equal(bins.at(-1).inactive, 1);
+  assert.equal(filterReadings(rows, 'inactive').length, 2);
+  assert.equal(filterReadings(rows, 'motion').length, 1);
+  assert.equal(filterReadings(rows, 'inactive', '2026-09-28').length, 1);
+  assert.ok(csv(rows).includes('Sem movimento'));
+  assert.ok(csv(rows).includes('atividade_sensor'));
+  assert.throws(() => normalizeActivity([{ id: 3, data_hora: 'invalid' }]));
+});
 const event = (numero_evento, minutesAgo = 0, id = numero_evento) => ({
   id,
   numero_evento,

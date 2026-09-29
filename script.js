@@ -58,6 +58,7 @@
   let readings = [];
   let latest = null;
   let failed = false;
+  let limited = false;
   let lastRefresh = null;
   let hours = 24;
   let page = 1;
@@ -73,15 +74,15 @@
     toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4000);
   }
   function statusLabel(row) {
-    return `<span class="status-label"><span class="dot coral"></span>Movimento detectado</span>`;
+    return `<span class="status-label"><span class="dot ${row.source === 'atividade_sensor' ? 'green' : 'coral'}"></span>${row.source === 'atividade_sensor' ? 'Sem movimento' : 'Movimento detectado'}</span>`;
   }
   function renderStatus() {
     const knownDate = latest?.recorded_at;
     text('environment-badge', failed ? 'SEM ATUALIZAÇÃO' : latest ? 'REGISTRADO' : 'AGUARDANDO');
     $('environment-badge').className = `badge ${failed || !latest ? 'offline' : 'normal'}`;
     $('radar').className = `radar ${failed || !latest ? 'is-offline' : ''}`;
-    text('environment-title', latest ? `Evento ${latest.numero_evento === null ? 'sem número' : '#' + latest.numero_evento}` : 'Nenhum evento recebido');
-    text('environment-description', latest ? (knownDate ? `${formatDate(knownDate)} às ${formatTime(knownDate)}` : 'Movimento registrado sem data válida.') : 'Aguardando registros de movimento.');
+    text('environment-title', latest?.source === 'atividade_sensor' ? 'Sem movimento' : latest ? `Evento ${latest.numero_evento === null ? 'sem número' : '#' + latest.numero_evento}` : 'Nenhum registro recebido');
+    text('environment-description', latest ? (knownDate ? `${formatDate(knownDate)} às ${formatTime(knownDate)}` : 'Leitura registrada sem data válida.') : 'Aguardando registros do sensor.');
     text('environment-footer', 'Estado ligado/desligado não informado');
     text('header-status', failed ? 'Dados indisponíveis' : !loaded ? 'Carregando…' : isDemo ? 'Modo demonstração' : 'Dados atualizados');
     $('header-dot').className = `dot ${failed || !loaded ? 'neutral' : isDemo ? 'amber' : 'green'}`;
@@ -90,7 +91,7 @@
     $('demo-toolbar').hidden = !isDemo || failed;
     text('refresh-label', lastRefresh ? `Atualizado às ${formatTime(lastRefresh)}` : 'Buscando dados…');
     $('refresh-dot').className = `dot ${failed ? 'amber' : 'green'}`;
-    text('recent-footer-text', failed ? 'Últimos dados disponíveis · Brasília (UTC−3)' : 'Horário da detecção · Brasília (UTC−3)');
+    text('recent-footer-text', failed ? 'Últimos dados disponíveis · Brasília (UTC−3)' : 'Horário da leitura · Brasília (UTC−3)');
     $('recent-dot').className = `dot ${failed ? 'amber' : 'green'}`;
   }
   function renderRecent() {
@@ -99,9 +100,9 @@
     recentPage = Math.min(recentPage, pages);
     const start = (recentPage - 1) * recentPageSize;
     const pageRows = rows.slice(start, start + recentPageSize);
-    $('recent-events').innerHTML = pageRows.length ? pageRows.map(row => `<tr><td title="${escape(formatDate(row.recorded_at))}">${row.recorded_at ? formatTime(row.recorded_at) : 'Sem data'}<small class="event-number">Evento ${escape(row.numero_evento ?? '—')}</small></td><td>${statusLabel(row)}</td></tr>`).join('') : '<tr><td class="empty-cell" colspan="2">Nenhuma detecção registrada neste período.</td></tr>';
+    $('recent-events').innerHTML = pageRows.length ? pageRows.map(row => `<tr><td title="${escape(formatDate(row.recorded_at))}">${row.recorded_at ? formatTime(row.recorded_at) : 'Sem data'}<small class="event-number">${row.source === 'atividade_sensor' ? 'Leitura #' + escape(row.id) : 'Evento ' + escape(row.numero_evento ?? '—')}</small></td><td>${statusLabel(row)}</td></tr>`).join('') : '<tr><td class="empty-cell" colspan="2">Nenhum registro neste período.</td></tr>';
     $('recent-pagination').hidden = rows.length <= recentPageSize;
-    text('recent-count', `${start + 1}–${Math.min(start + recentPageSize, rows.length)} de ${rows.length} eventos`);
+    text('recent-count', `${start + 1}–${Math.min(start + recentPageSize, rows.length)} de ${rows.length} registros`);
     text('recent-page-label', `${recentPage} de ${pages}`);
     $('recent-previous').disabled = recentPage <= 1;
     $('recent-next').disabled = recentPage >= pages;
@@ -110,8 +111,10 @@
     const bins = Monitor.aggregate(readings, hours);
     const total = bins.reduce((sum, bin) => sum + bin.count, 0);
     text('detection-count', total);
+    const inactive = bins.reduce((sum, bin) => sum + bin.inactive, 0);
+    text('inactive-count', `${inactive} sem movimento`);
     text('chart-subtitle', hours === 1 ? 'na última hora' : hours === 168 ? 'nos últimos 7 dias' : 'nas últimas 24 horas');
-    const max = Math.max(4, ...bins.map(bin => bin.count));
+    const max = Math.max(4, ...bins.flatMap(bin => [bin.count, bin.inactive]));
     const ceiling = Math.ceil(max / 4) * 4;
     // Use CSS pixels so the labels stay readable on small screens.
     const chartWidth = Math.max(240, $('chart-area').clientWidth);
@@ -124,24 +127,29 @@
       svg += `<line x1="${left}" y1="${y}" x2="${left + width}" y2="${y}" stroke="${i ? '#e5ecf5' : '#58bda5'}" stroke-width="1"/><text x="23" y="${y + 5}" text-anchor="end" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif">${ceiling * i / 4}</text>`;
     }
     const slot = width / bins.length;
-    const barWidth = Math.min(slot * .6, hours === 168 ? 26 : hours === 1 ? 16 : 10);
+    const barWidth = Math.min(slot * .32, hours === 168 ? 26 : hours === 1 ? 16 : 10);
     const labelEvery = Math.ceil(bins.length / Math.max(3, Math.floor(width / 72)));
     const endX = left + width;
     const endLabel = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: Monitor.timeZone });
     svg += `<line x1="${endX}" y1="${top}" x2="${endX}" y2="${top + height}" stroke="#f0f3f8"/><text data-axis-end="now" x="${endX - 2}" y="${chartHeight - 17}" text-anchor="end" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif"><title>Horário atual</title>${endLabel}</text>`;
     bins.forEach((bin, index) => {
       const x = left + (index + .5) * slot;
-      const barHeight = bin.count / ceiling * height;
       const label = hours === 168 ? new Date(bin.start).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: Monitor.timeZone }) : new Date(bin.start).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: Monitor.timeZone });
       const end = hours === 168 ? new Date(bin.end).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: Monitor.timeZone }) : new Date(bin.end).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: Monitor.timeZone });
-      const description = `${label}–${end}: ${bin.count} ${bin.count === 1 ? 'detecção' : 'detecções'}`;
+
       if (index % labelEvery === 0) {
         svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#f0f3f8"/><text x="${Math.max(left + 17, Math.min(x, chartWidth - 24))}" y="${chartHeight - 17}" text-anchor="middle" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif">${label}</text>`;
       }
-      svg += `<rect class="chart-bar" x="${x - barWidth / 2}" y="${top + height - Math.max(barHeight, 2)}" width="${barWidth}" height="${Math.max(barHeight, 2)}" rx="2" opacity="${bin.count ? 1 : .13}" tabindex="${bin.count ? 0 : -1}" role="img" aria-label="${description}" data-tooltip="${description}"><title>${description}</title></rect>`;
+      [['count', 'Movimento detectado', -1], ['inactive', 'Sem movimento', 1]].forEach(([key, status, direction]) => {
+        const value = bin[key];
+        if (!value) return;
+        const barHeight = value / ceiling * height;
+        const tooltip = `${label}–${end}: ${value} registros — ${status}`;
+        svg += `<rect class="chart-bar ${key === 'inactive' ? 'chart-bar-inactive' : ''}" x="${x + direction * barWidth / 2 - barWidth / 2}" y="${top + height - barHeight}" width="${barWidth}" height="${barHeight}" rx="2" tabindex="0" role="img" aria-label="${tooltip}" data-tooltip="${tooltip}"><title>${tooltip}</title></rect>`;
+      });
     });
     $('activity-chart').innerHTML = svg;
-    $('activity-chart').setAttribute('aria-label', `${total} detecções de movimento ${$('chart-subtitle').textContent}. Gráfico com ${bins.length} intervalos.`);
+    $('activity-chart').setAttribute('aria-label', `${total} detecções de movimento e ${inactive} registros sem movimento ${$('chart-subtitle').textContent}. Gráfico com ${bins.length} intervalos.`);
     $('chart-tooltip').hidden = true;
     $('activity-chart').querySelectorAll('[data-tooltip]').forEach(bar => {
       const show = () => { text('chart-tooltip', bar.dataset.tooltip); $('chart-tooltip').hidden = false; };
@@ -154,12 +162,12 @@
   function renderHistory() {
     const rows = historyRows();
     const pages = Math.max(1, Math.ceil(rows.length / pageSize)); page = Math.min(page, pages);
-    $('history-events').innerHTML = rows.length ? rows.slice((page - 1) * pageSize, page * pageSize).map(row => `<tr><td>${formatDate(row.recorded_at)}</td><td>${formatTime(row.recorded_at)}</td><td>${escape(row.numero_evento ?? '—')}</td><td>${statusLabel(row)}</td></tr>`).join('') : '<tr><td class="empty-cell" colspan="4">Nenhum evento encontrado para estes filtros.</td></tr>';
+    $('history-events').innerHTML = rows.length ? rows.slice((page - 1) * pageSize, page * pageSize).map(row => `<tr><td>${formatDate(row.recorded_at)}</td><td>${formatTime(row.recorded_at)}</td><td>${escape(row.numero_evento ?? '—')}</td><td>${statusLabel(row)}</td></tr>`).join('') : '<tr><td class="empty-cell" colspan="4">Nenhum registro encontrado para estes filtros.</td></tr>';
     text('history-count', `${rows.length} ${rows.length === 1 ? 'registro' : 'registros'}${isDemo ? ' de demonstração' : ''}`);
     text('page-label', `${page} de ${pages}`);
     $('previous-page').disabled = page <= 1; $('next-page').disabled = page >= pages;
     $('export-button').disabled = !rows.length;
-    text('history-intro', `${$('chart-period').selectedOptions[0].textContent} e registros sem data. Horários de Brasília (UTC−3). ${isDemo ? 'Dados de demonstração.' : 'Até 1.000 inserções; ordenadas pela data da detecção. Reenvios idênticos agrupados.'}`);
+    text('history-intro', `${$('chart-period').selectedOptions[0].textContent} e registros sem data. Horários de Brasília (UTC−3). ${isDemo ? 'Dados de demonstração.' : 'Até 1.000 registros por tabela, ordenados pela data da leitura. Reenvios de eventos agrupados.'}`);
   }
   function render() { renderStatus(); renderRecent(); renderChart(); if ($('history-dialog').open) renderHistory(); }
   async function refresh(manual = false) {
@@ -176,6 +184,8 @@
       if (!loaded || !isDemo || result.mode !== 'demo') {
         readings = result.events; latest = result.latest;
       }
+      limited = result.limited === true;
+      $('data-limit').hidden = !limited;
       isDemo = result.mode === 'demo'; loaded = true;
       failed = false; lastRefresh = Date.now();
       $('connection-error').hidden = true;

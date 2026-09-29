@@ -1,6 +1,38 @@
 const { test, expect } = require('@playwright/test');
 const Monitor = require('../../monitor');
 
+test('inactivity appears in chart, latest reading, history and filtered CSV', async ({ page }) => {
+  await page.route('**/api/dashboard?*', route => {
+    const events = Monitor.combineReadings(
+      Monitor.normalizeEvents([{ id: 1, numero_evento: 9, data_hora: Monitor.deviceDate(Date.now() - 60000) }]).events,
+      Monitor.normalizeActivity([{ id: 1, data_hora: new Date().toISOString() }])
+    );
+    return route.fulfill({ json: { mode: 'live', events, latest: events[0], limited: true } });
+  });
+  await page.goto('/');
+  await expect(page.locator('#environment-title')).toHaveText('Sem movimento');
+  await expect(page.locator('#detection-count')).toHaveText('1');
+  await expect(page.locator('#inactive-count')).toHaveText('1 sem movimento');
+  await expect(page.locator('.chart-bar-inactive')).toHaveCount(1);
+  await expect(page.locator('#recent-events')).toContainText('Leitura #1');
+  await expect(page.locator('#data-limit')).toBeVisible();
+  await page.locator('.recent-panel [data-open]').click();
+  await page.locator('#history-filter').selectOption('inactive');
+  await expect(page.locator('#history-events tr')).toHaveCount(1);
+  await expect(page.locator('#history-events')).toContainText('Sem movimento');
+  const pending = page.waitForEvent('download');
+  await page.locator('#export-button').click();
+  const download = await pending;
+  const stream = await download.createReadStream();
+  const chunks = [];
+  for await (const chunk of stream) chunks.push(chunk);
+  const csv = Buffer.concat(chunks).toString('utf8');
+  expect(csv).toContain('atividade_sensor');
+  expect(csv).not.toContain('Movimento detectado');
+  await page.locator('#history-filter').selectOption('motion');
+  await expect(page.locator('#history-events')).toContainText('Movimento detectado');
+});
+
 test.beforeEach(async ({ page }) => {
   await page.route('**/api/dashboard?*', route => {
     const events = Monitor.demoReadings();
@@ -46,7 +78,7 @@ test('demo supports movement, history filters, period selection, and CSV downloa
   await page.locator('#chart-period').selectOption('168');
   await expect(page.locator('#recent-events tr')).toHaveCount(5);
   await expect(page.locator('#recent-pagination')).toBeVisible();
-  await expect(page.locator('#recent-count')).toContainText('de 126 eventos');
+  await expect(page.locator('#recent-count')).toContainText('de 126 registros');
   await page.locator('#recent-next').click();
   await expect(page.locator('#recent-page-label')).toHaveText('2 de 26');
   await expect(page.locator('#recent-events')).toContainText('Evento 121');
@@ -65,7 +97,7 @@ test('demo supports movement, history filters, period selection, and CSV downloa
   await page.locator('#export-button').click();
   expect((await downloadPromise).suggestedFilename()).toMatch(/esp32-demonstracao/);
   await page.locator('#history-date').fill('2020-01-01');
-  await expect(page.locator('#history-events')).toContainText('Nenhum evento');
+  await expect(page.locator('#history-events')).toContainText('Nenhum registro');
   await expect(page.locator('#export-button')).toBeDisabled();
   await page.keyboard.press('Escape');
   await expect(page.locator('#history-dialog')).not.toBeVisible();
