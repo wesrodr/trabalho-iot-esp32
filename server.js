@@ -1,0 +1,64 @@
+const http = require('node:http');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = __dirname;
+const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon' };
+const allowed = new Set(['index.html', 'style.css', 'script.js', 'monitor.js']);
+const Monitor = require('./monitor');
+
+function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
+  const url = env.SUPABASE_URL || '';
+  const key = env.SUPABASE_KEY || '';
+  const demo = env.IOT_DEMO_MODE === 'true' || (!url && !key && env.IOT_DEMO_MODE !== 'false');
+  const demoEvents = Monitor.demoReadings();
+  function json(res, status, body) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+    res.end(JSON.stringify(body));
+  }
+  return async function dashboard(req, res) {
+    const requestUrl = new URL(req.url, 'http://localhost');
+    if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return json(res, 405, { error: 'Método não permitido.' }); }
+    const hours = Number(requestUrl.searchParams.get('hours') || 24);
+    if (![1, 24, 168].includes(hours)) return json(res, 400, { error: 'Período inválido.' });
+    if (demo) return json(res, 200, { mode: 'demo', events: demoEvents, latest: demoEvents[0], duplicates: 0, undated: 0, limited: false });
+    try {
+      const projectUrl = new URL(url);
+      if (!key || projectUrl.protocol !== 'https:' || !projectUrl.hostname.endsWith('.supabase.co') || projectUrl.username || projectUrl.password || projectUrl.port) throw new Error('Invalid server configuration');
+      const headers = { apikey: key };
+      if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`;
+      // data_hora is DD/MM/YYYY text, so date ordering/filtering is done after parsing.
+      // data_hora is DD/MM/YYYY text, so date ordering/filtering is done after parsing.
+      const query = { select: 'id,numero_evento,data_hora', order: 'id.desc', limit: '1000' };
+      const response = await fetchImpl(`${projectUrl.origin}/rest/v1/eventos?${new URLSearchParams(query)}`, { headers, signal: AbortSignal.timeout(12000), cache: 'no-store' });
+      if (!response.ok) throw new Error('Upstream unavailable');
+      const data = await response.json();
+      if (!Array.isArray(data)) throw new Error('Invalid events');
+      return json(res, 200, { mode: 'live', ...Monitor.normalizeEvents(data), limited: data.length >= 1000 });
+    } catch {
+      return json(res, 503, { error: 'Não foi possível atualizar o monitoramento. Tentaremos novamente em alguns segundos.' });
+    }
+  }
+}
+
+function createServer({ env = process.env, fetchImpl = fetch } = {}) {
+  const dashboard = createDashboardHandler({ env, fetchImpl });
+  return http.createServer((req, res) => {
+  let pathname;
+  try { pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname); } catch { res.writeHead(400).end(); return; }
+  if (pathname === '/api/dashboard') { void dashboard(req, res); return; }
+  if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }).end(); return; }
+  const relative = pathname === '/' ? 'index.html' : pathname.slice(1);
+  const file = path.resolve(root, relative);
+  if (!file.startsWith(root + path.sep) || (!allowed.has(relative) && !/^assets\/[a-zA-Z0-9_.-]+$/.test(relative))) { res.writeHead(404).end('Não encontrado'); return; }
+  fs.readFile(file, (error, data) => {
+    if (error) { res.writeHead(404).end('Não encontrado'); return; }
+    res.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    res.end(req.method === 'HEAD' ? undefined : data);
+  });
+  });
+}
+if (require.main === module) {
+  if (fs.existsSync(path.join(root, '.env'))) process.loadEnvFile(path.join(root, '.env'));
+  createServer().listen(Number(process.env.PORT) || 3000, process.env.HOST || '127.0.0.1', () => console.log('ESP32 IoT disponível em http://localhost:' + (process.env.PORT || 3000)));
+}
+module.exports = { createServer, createDashboardHandler };
