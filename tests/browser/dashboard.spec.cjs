@@ -89,12 +89,11 @@ test('visitor has no connection controls or removed cards; server states still u
     return route.fulfill({ json: { mode: 'live', ...normalized, limited: false } });
   });
   await page.goto('/');
-  await expect(page.locator('#header-status')).toHaveText('Dados atualizados');
+  await expect(page.locator('.system-indicator')).toHaveCount(0);
   await expect(page.locator('#environment-title')).toHaveText('Evento #27');
   await expect(page.locator('.stat-card, .stat-grid, #settings-dialog, [data-open="settings-dialog"], #connection-form, script[src="config.js"]')).toHaveCount(0);
   await expect(page.locator('#demo-toolbar')).toBeHidden();
   await expect(page.locator('button').filter({ hasText: /supabase|conectar/i })).toHaveCount(0);
-  expect(await page.locator('#header-status').evaluate(el => el.closest('button'))).toBeNull();
   for (const [nextMode, expected] of [['empty', 'AGUARDANDO'], ['live', 'REGISTRADO']]) {
     mode = nextMode;
     await page.locator('#refresh-button').click();
@@ -108,14 +107,13 @@ test('visitor has no connection controls or removed cards; server states still u
   mode = 'error';
   await page.locator('#refresh-button').click();
   await expect(page.locator('#connection-error')).toBeVisible();
-  await expect(page.locator('#header-status')).toHaveText('Dados indisponíveis');
   expect(errors).toEqual([]);
 });
 
 test('demo supports movement, history filters, period selection, and CSV download', async ({ page }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
-  await expect(page.locator('#header-status')).toHaveText('Modo demonstração');
+  await expect(page.locator('#mode-badge')).toHaveText('DEMONSTRAÇÃO');
   await expect(page.locator('#environment-badge')).toHaveText('REGISTRADO');
   await expect(page.locator('#activity-chart [data-axis-end="now"]')).toHaveCount(1);
   await page.locator('#chart-period').selectOption('168');

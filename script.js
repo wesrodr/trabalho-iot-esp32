@@ -89,8 +89,6 @@
     text('environment-footer', deviceState === 'active' ? 'ESP32 ONLINE' : 'ESP32 OFFLINE');
     $('environment-footer').dataset.state = deviceState === 'active' ? 'active' : 'inactive';
     text('device-updated', deviceState === 'unavailable' ? 'Não foi possível consultar o sinal do dispositivo.' : deviceState === 'unknown' ? 'Nenhum sinal válido recebido.' : `Último sinal: ${formatDate(device.recorded_at)} às ${formatTime(device.recorded_at)}${deviceState === 'inactive' ? ' · Mais de 2 minutos sem sinal.' : ''}`);
-    text('header-status', failed ? 'Dados indisponíveis' : !loaded ? 'Carregando…' : isDemo ? 'Modo demonstração' : 'Dados atualizados');
-    $('header-dot').className = `dot ${failed || !loaded ? 'neutral' : isDemo ? 'amber' : 'green'}`;
     text('mode-badge', !loaded ? 'AGUARDANDO' : isDemo ? 'DEMONSTRAÇÃO' : 'HISTÓRICO');
     $('mode-badge').className = `badge ${!loaded ? 'offline' : isDemo ? 'demo-badge' : 'normal'}`;
     $('demo-toolbar').hidden = !isDemo || failed;
