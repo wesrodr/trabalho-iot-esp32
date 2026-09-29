@@ -147,7 +147,7 @@
       if (index % labelEvery === 0) {
         svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#f0f3f8"/><text x="${Math.max(left + 17, Math.min(x, chartWidth - 24))}" y="213" text-anchor="middle" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif">${label}</text>`;
       }
-      svg += `<rect class="chart-bar" x="${x - barWidth / 2}" y="${top + height - Math.max(barHeight, 2)}" width="${barWidth}" height="${Math.max(barHeight, 2)}" rx="2" opacity="${bin.count ? 1 : .13}" tabindex="0" role="img" aria-label="${description}" data-tooltip="${description}"><title>${description}</title></rect>`;
+      svg += `<rect class="chart-bar" x="${x - barWidth / 2}" y="${top + height - Math.max(barHeight, 2)}" width="${barWidth}" height="${Math.max(barHeight, 2)}" rx="2" opacity="${bin.count ? 1 : .13}" tabindex="${bin.count ? 0 : -1}" role="img" aria-label="${description}" data-tooltip="${description}"><title>${description}</title></rect>`;
     });
     $('activity-chart').innerHTML = svg;
     $('activity-chart').setAttribute('aria-label', `${total} detecções de movimento ${$('chart-subtitle').textContent}. Gráfico com ${bins.length} intervalos.`);

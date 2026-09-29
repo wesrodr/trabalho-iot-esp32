@@ -82,6 +82,11 @@ test('mobile and desktop fit viewport with loaded fonts and image', async ({ pag
     expect(overflowing, `overflow at ${width}px`).toEqual([]);
     const cardSpace = await page.evaluate(() => document.querySelector('.environment-panel').getBoundingClientRect().bottom - document.querySelector('.environment-footer').getBoundingClientRect().bottom);
     expect(cardSpace, `unused space below detection footer at ${width}px`).toBeLessThanOrEqual(2);
+    if (width <= 390) {
+      const headerHeight = await page.locator('.header').evaluate(el => el.getBoundingClientRect().height);
+      expect(headerHeight, `header height at ${width}px`).toBeLessThanOrEqual(150);
+    }
   }
   await expect(page.locator('#dashboard')).toBeVisible();
+  await expect(page.locator('.data-context')).toContainText('Como interpretar os dados');
 });
