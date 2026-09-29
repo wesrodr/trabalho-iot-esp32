@@ -18,7 +18,7 @@ test('online heartbeat expires automatically and a new heartbeat restores online
   await expect(page.locator('#environment-footer')).toHaveText('ESP32 ONLINE');
 });
 
-test('device status updates independently of movement and shows unknown on failed reads', async ({ page }) => {
+test('device status updates independently of movement and shows offline on missing or failed reads', async ({ page }) => {
   let status = 'online';
   let age = 0;
   await page.route('**/api/dashboard?*', route => {
@@ -35,7 +35,8 @@ test('device status updates independently of movement and shows unknown on faile
   await expect(page.locator('#detection-count')).toHaveText('1');
   status = null;
   await page.locator('#refresh-button').click();
-  await expect(page.locator('#environment-footer')).toHaveText('Status do ESP32 indisponível');
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 OFFLINE');
+  await expect(page.locator('#device-updated')).toContainText('Não foi possível consultar');
   await expect(page.locator('#recent-events')).toContainText('Movimento detectado');
 });
 
@@ -98,7 +99,11 @@ test('visitor has no connection controls or removed cards; server states still u
     mode = nextMode;
     await page.locator('#refresh-button').click();
     await expect(page.locator('#environment-badge')).toHaveText(expected);
-    if (nextMode === 'empty') await expect(page.locator('#recent-pagination')).toBeHidden();
+    if (nextMode === 'empty') {
+      await expect(page.locator('#recent-pagination')).toBeHidden();
+      await expect(page.locator('#environment-footer')).toHaveText('ESP32 OFFLINE');
+      await expect(page.locator('#device-updated')).toHaveText('Nenhum sinal válido recebido.');
+    }
   }
   mode = 'error';
   await page.locator('#refresh-button').click();

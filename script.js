@@ -86,9 +86,9 @@
     text('environment-title', latest?.source === 'atividade_sensor' ? 'Sem movimento' : latest ? `Evento ${latest.numero_evento === null ? 'sem número' : '#' + latest.numero_evento}` : 'Nenhum registro recebido');
     text('environment-description', latest ? (knownDate ? `${formatDate(knownDate)} às ${formatTime(knownDate)}` : 'Leitura registrada sem data válida.') : 'Aguardando registros do sensor.');
     const deviceState = failed || deviceUnavailable ? 'unavailable' : Monitor.deviceHeartbeatState(device);
-    text('environment-footer', deviceState === 'active' ? 'ESP32 ONLINE' : deviceState === 'inactive' ? 'ESP32 OFFLINE' : deviceState === 'unavailable' ? 'Status do ESP32 indisponível' : 'Status do ESP32 não informado');
-    $('environment-footer').dataset.state = deviceState;
-    text('device-updated', deviceState === 'unavailable' ? 'Aguardando atualização do dispositivo.' : device ? `Último sinal: ${device.recorded_at ? formatDate(device.recorded_at) + ' às ' + formatTime(device.recorded_at) : 'sem data'}${deviceState === 'inactive' ? ' · Mais de 2 minutos sem sinal.' : ''}` : 'Aguardando status do dispositivo.');
+    text('environment-footer', deviceState === 'active' ? 'ESP32 ONLINE' : 'ESP32 OFFLINE');
+    $('environment-footer').dataset.state = deviceState === 'active' ? 'active' : 'inactive';
+    text('device-updated', deviceState === 'unavailable' ? 'Não foi possível consultar o sinal do dispositivo.' : deviceState === 'unknown' ? 'Nenhum sinal válido recebido.' : `Último sinal: ${formatDate(device.recorded_at)} às ${formatTime(device.recorded_at)}${deviceState === 'inactive' ? ' · Mais de 2 minutos sem sinal.' : ''}`);
     text('header-status', failed ? 'Dados indisponíveis' : !loaded ? 'Carregando…' : isDemo ? 'Modo demonstração' : 'Dados atualizados');
     $('header-dot').className = `dot ${failed || !loaded ? 'neutral' : isDemo ? 'amber' : 'green'}`;
     text('mode-badge', !loaded ? 'AGUARDANDO' : isDemo ? 'DEMONSTRAÇÃO' : 'HISTÓRICO');
