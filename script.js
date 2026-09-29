@@ -80,7 +80,7 @@
     const knownDate = latest?.recorded_at;
     text('environment-badge', failed ? 'SEM ATUALIZAÇÃO' : latest ? 'REGISTRADO' : 'AGUARDANDO');
     $('environment-badge').className = `badge ${failed || !latest ? 'offline' : 'normal'}`;
-    $('radar').className = `radar ${failed || !latest ? 'is-offline' : ''}`;
+    $('radar').className = `radar ${failed || !latest ? 'is-offline' : latest.source !== 'atividade_sensor' ? 'is-motion' : ''}`;
     text('environment-title', latest?.source === 'atividade_sensor' ? 'Sem movimento' : latest ? `Evento ${latest.numero_evento === null ? 'sem número' : '#' + latest.numero_evento}` : 'Nenhum registro recebido');
     text('environment-description', latest ? (knownDate ? `${formatDate(knownDate)} às ${formatTime(knownDate)}` : 'Leitura registrada sem data válida.') : 'Aguardando registros do sensor.');
     text('environment-footer', 'Estado ligado/desligado não informado');

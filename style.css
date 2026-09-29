@@ -106,12 +106,12 @@ h2{margin:0;font:750 26px/1.4 var(--heading);letter-spacing:-.6px}
 .environment-copy p{font-size:14px;color:#63758d;margin:0 0 15px}
 .environment-footer{display:flex;justify-content:center;align-items:center;gap:6px;border-top:1px solid #f0f4f9;margin-top:12px;padding:12px 10px;font-size:14px;color:#8ca898}
 .environment-footer .icon{width:13px;height:13px}
-.radar.is-motion{color:#ec6c7e}
+.radar.is-motion{color:#dc2626}
 .radar.is-motion .ring-outer{background:#fffafb;border-color:#ffe2e7}
 .radar.is-motion .ring-middle{background:#fff0f2;border-color:#ffdce2}
 .radar.is-motion .ring-inner{background:#ffdee5;border-color:#ffced8}
-.radar.is-motion .radar-center{background:#ffd0da;animation:pulse 1.5s infinite}
-.radar.is-motion .radar-point{background:var(--coral)}
+.radar.is-motion .radar-center{background:#fecaca;animation:pulse 1.5s infinite}
+.radar.is-motion .radar-point{background:#ef4444}
 .radar.is-offline{filter:grayscale(1);opacity:.55}
 .select-wrap{display:flex;align-items:center;gap:6px;border:1px solid #e7edf5;border-radius:6px;padding:6px 8px;background:#fff;position:relative;flex-shrink:0}
 .select-wrap>.icon,.select-wrap>i .icon{width:12px;height:12px;color:#8291a8}
@@ -635,11 +635,11 @@ h2{font-size:16px}
 [data-theme="dark"] .radar .ring-middle { background: #1c3c3b; border-color: #31655b; }
 [data-theme="dark"] .radar .ring-inner { background: #225347; border-color: #397a63; }
 [data-theme="dark"] .radar-center { background: #2b6d56; }
-[data-theme="dark"] .radar.is-motion { color: #ffb1c0; }
+[data-theme="dark"] .radar.is-motion { color: #fca5a5; }
 [data-theme="dark"] .radar.is-motion .ring-outer { background: #302536; border-color: #543244; }
 [data-theme="dark"] .radar.is-motion .ring-middle { background: #432d3e; border-color: #754353; }
 [data-theme="dark"] .radar.is-motion .ring-inner { background: #623747; border-color: #985569; }
-[data-theme="dark"] .radar.is-motion .radar-center { background: #88485b; }
+[data-theme="dark"] .radar.is-motion .radar-center { background: #7f1d1d; }
 [data-theme="dark"] .environment-footer { border-color: #2c3d56; color: #93cdb8; }
 [data-theme="dark"] .select-wrap select { color: #d5e2f5; }
 [data-theme="dark"] .select-wrap option { color: #d5e2f5; background: #19263a; }
