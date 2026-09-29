@@ -57,6 +57,8 @@
   let loaded = false;
   let readings = [];
   let latest = null;
+  let device = null;
+  let deviceUnavailable = false;
   let failed = false;
   let limited = false;
   let lastRefresh = null;
@@ -83,7 +85,10 @@
     $('radar').className = `radar ${failed || !latest ? 'is-offline' : latest.source !== 'atividade_sensor' ? 'is-motion' : ''}`;
     text('environment-title', latest?.source === 'atividade_sensor' ? 'Sem movimento' : latest ? `Evento ${latest.numero_evento === null ? 'sem número' : '#' + latest.numero_evento}` : 'Nenhum registro recebido');
     text('environment-description', latest ? (knownDate ? `${formatDate(knownDate)} às ${formatTime(knownDate)}` : 'Leitura registrada sem data válida.') : 'Aguardando registros do sensor.');
-    text('environment-footer', 'Estado ligado/desligado não informado');
+    const deviceState = failed || deviceUnavailable ? 'unavailable' : device?.state || 'unknown';
+    text('environment-footer', deviceState === 'active' ? 'ESP32 ativo' : deviceState === 'inactive' ? 'ESP32 inativo' : deviceState === 'unavailable' ? 'Status do ESP32 indisponível' : 'Status do ESP32 não informado');
+    $('environment-footer').dataset.state = deviceState;
+    text('device-updated', deviceState === 'unavailable' ? 'Aguardando atualização do dispositivo.' : device ? `Último status informado: ${device.recorded_at ? formatDate(device.recorded_at) + ' às ' + formatTime(device.recorded_at) : 'sem data'}` : 'Aguardando status do dispositivo.');
     text('header-status', failed ? 'Dados indisponíveis' : !loaded ? 'Carregando…' : isDemo ? 'Modo demonstração' : 'Dados atualizados');
     $('header-dot').className = `dot ${failed || !loaded ? 'neutral' : isDemo ? 'amber' : 'green'}`;
     text('mode-badge', !loaded ? 'AGUARDANDO' : isDemo ? 'DEMONSTRAÇÃO' : 'HISTÓRICO');
@@ -185,6 +190,8 @@
         readings = result.events; latest = result.latest;
       }
       limited = result.limited === true;
+      device = result.device || null;
+      deviceUnavailable = result.deviceUnavailable === true;
       $('data-limit').hidden = !limited;
       isDemo = result.mode === 'demo'; loaded = true;
       failed = false; lastRefresh = Date.now();

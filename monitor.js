@@ -54,6 +54,13 @@
     // IDs belong to different tables and must never be deduplicated across sources.
     return [...events, ...activity].sort((a, b) => (Date.parse(b.recorded_at) || 0) - (Date.parse(a.recorded_at) || 0) || (a.source || 'eventos').localeCompare(b.source || 'eventos') || (BigInt(a.id) > BigInt(b.id) ? -1 : BigInt(a.id) < BigInt(b.id) ? 1 : 0));
   }
+  function normalizeDeviceStatus(row) {
+    if (!row) return null;
+    if (!integer(row.id) || (row.status !== null && typeof row.status !== 'string') || (row.data_hora !== null && (typeof row.data_hora !== 'string' || !Number.isFinite(Date.parse(row.data_hora))))) throw new Error('Invalid status_dispositivo row');
+    const value = (row.status || '').trim().toLowerCase();
+    const state = ['ativo', 'online', 'ligado'].includes(value) ? 'active' : ['inativo', 'offline', 'desligado'].includes(value) ? 'inactive' : 'unknown';
+    return { id: row.id, status: row.status, state, recorded_at: row.data_hora === null ? null : new Date(row.data_hora).toISOString() };
+  }
   function aggregate(readings, hours, now = Date.now()) {
     const count = hours === 1 ? 12 : hours === 168 ? 7 : 24;
     const step = hours * 3600000 / count;
@@ -86,5 +93,5 @@
     const escape = value => '"' + String(value ?? '').replace(/^[=+@-]/, "'$&").replace(/"/g, '""') + '"';
     return '\uFEFF' + ['ID no banco;Numero do evento;Data e hora (UTC-3);Status;Tabela', ...readings.map(row => [row.id, row.numero_evento, row.recorded_at ? row.data_hora : 'Data indisponível', row.source === 'atividade_sensor' ? 'Sem movimento' : 'Movimento detectado', row.source || 'eventos'].map(escape).join(';'))].join('\r\n');
   }
-  return { timeZone, parseDeviceDate, normalizeEvents, normalizeActivity, combineReadings, validReading, inPeriod, dateKey, deviceDate, aggregate, filterReadings, demoReadings, csv };
+  return { timeZone, parseDeviceDate, normalizeEvents, normalizeActivity, normalizeDeviceStatus, combineReadings, validReading, inPeriod, dateKey, deviceDate, aggregate, filterReadings, demoReadings, csv };
 });

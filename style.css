@@ -730,3 +730,8 @@ h2{font-size:16px}
 
 .chart-bar-inactive{fill:#21a67e}
 .chart-bar-inactive:hover,.chart-bar-inactive:focus{fill:#16845f}
+
+#device-updated{display:block;font-size:11px;line-height:1.5;margin-top:4px;color:var(--muted)}
+#environment-footer[data-state="active"]{color:var(--green);font-weight:700}
+#environment-footer[data-state="inactive"]{color:#dc2626;font-weight:700}
+[data-theme="dark"] #environment-footer[data-state="inactive"]{color:#fca5a5}

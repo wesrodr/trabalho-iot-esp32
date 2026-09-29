@@ -12,15 +12,18 @@ test('server owns configuration and only exposes sensor data', async t => {
   const env = { SUPABASE_URL: 'https://private-project.supabase.co', SUPABASE_KEY: 'sb_publishable_private_test' };
   const requests = [];
   const row = { id: 1, numero_evento: 17, data_hora: '28/09/2026 12:00:00', private_field: 'do-not-expose' };
-  const base = await start(t, { env, fetchImpl: async (url, options) => { requests.push({ url, options }); return Response.json(url.includes('/atividade_sensor?') ? [{ id: 1, data_hora: '2026-09-28T14:00:00Z' }] : [row]); } });
+  const base = await start(t, { env, fetchImpl: async (url, options) => { requests.push({ url, options }); return Response.json(url.includes('/status_dispositivo?') ? [{ id: 3, data_hora: '2026-09-28T15:01:00Z', status: 'ativo' }] : url.includes('/atividade_sensor?') ? [{ id: 1, data_hora: '2026-09-28T14:00:00Z' }] : [row]); } });
   const response = await fetch(`${base}/api/dashboard?hours=1&device_id=other&supabaseUrl=https://other.example`);
   assert.equal(response.status, 200);
   const data = await response.json();
   assert.equal(data.mode, 'live');
   assert.equal(data.latest.numero_evento, 17);
   assert.equal(data.latest.recorded_at, '2026-09-28T15:00:00.000Z');
-  assert.equal(requests.length, 2);
+  assert.equal(requests.length, 3);
   assert.equal(data.events.length, 2);
+  assert.equal(data.device.state, 'active');
+  assert.equal(new URL(requests[2].url).searchParams.get('order'), 'data_hora.desc.nullslast,id.desc');
+  assert.equal(new URL(requests[2].url).searchParams.get('limit'), '1');
   assert.equal(data.events[1].source, 'atividade_sensor');
   assert.equal(new URL(requests[1].url).searchParams.get('select'), 'id,data_hora');
   const request = requests[0];
@@ -62,6 +65,19 @@ test('demo is selected on server; a disabled demo with missing configuration fai
   assert.equal((await (await fetch(`${demo}/api/dashboard`)).json()).mode, 'demo');
   const live = await start(t, { env: { IOT_DEMO_MODE: 'false' } });
   assert.equal((await fetch(`${live}/api/dashboard`)).status, 503);
+});
+
+test('unavailable device status does not hide movement history or imply inactivity', async t => {
+  const base = await start(t, {
+    env: { SUPABASE_URL: 'https://private.supabase.co', SUPABASE_KEY: 'test-key' },
+    fetchImpl: async url => url.includes('/status_dispositivo?') ? new Response('', { status: 404 }) : Response.json([])
+  });
+  const response = await fetch(`${base}/api/dashboard`);
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.deviceUnavailable, true);
+  assert.equal(data.device, null);
+  assert.deepEqual(data.events, []);
 });
 
 test('dashboard handler supports the Vercel request and response interface', async () => {

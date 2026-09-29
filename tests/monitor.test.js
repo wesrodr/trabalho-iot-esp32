@@ -3,6 +3,19 @@ const assert = require('node:assert/strict');
 const { parseDeviceDate, normalizeEvents, aggregate, filterReadings, demoReadings, csv, deviceDate } = require('../monitor.js');
 const now = Date.parse('2026-09-28T15:00:00Z');
 const { normalizeActivity, combineReadings } = require('../monitor');
+const { normalizeDeviceStatus } = require('../monitor');
+
+test('device status distinguishes active, inactive and unknown without assuming a heartbeat', () => {
+  const row = { id: 1, data_hora: '2026-09-28T12:00:00-03:00', status: ' ATIVO ' };
+  assert.equal(normalizeDeviceStatus(row).state, 'active');
+  assert.equal(normalizeDeviceStatus(row).recorded_at, '2026-09-28T15:00:00.000Z');
+  for (const status of ['inativo', 'offline', 'desligado']) assert.equal(normalizeDeviceStatus({ ...row, status }).state, 'inactive');
+  for (const status of ['online', 'ligado']) assert.equal(normalizeDeviceStatus({ ...row, status }).state, 'active');
+  assert.equal(normalizeDeviceStatus({ ...row, status: 'unexpected' }).state, 'unknown');
+  assert.equal(normalizeDeviceStatus({ ...row, status: null, data_hora: null }).state, 'unknown');
+  assert.equal(normalizeDeviceStatus(null), null);
+  assert.throws(() => normalizeDeviceStatus({ ...row, data_hora: 'invalid' }));
+});
 
 test('inactivity uses timestamptz and stays separate from executions with the same ID', () => {
   const motion = normalizeEvents([{ id: 1, numero_evento: 3, data_hora: '28/09/2026 11:59:00' }]).events;

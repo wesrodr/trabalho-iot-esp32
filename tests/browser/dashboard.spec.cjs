@@ -1,6 +1,26 @@
 const { test, expect } = require('@playwright/test');
 const Monitor = require('../../monitor');
 
+test('device status updates independently of movement and shows unknown on failed reads', async ({ page }) => {
+  let status = 'ativo';
+  await page.route('**/api/dashboard?*', route => {
+    const normalized = Monitor.normalizeEvents([{ id: 1, numero_evento: 9, data_hora: Monitor.deviceDate(Date.now()) }]);
+    return route.fulfill({ json: { mode: 'live', ...normalized, device: status === null ? null : Monitor.normalizeDeviceStatus({ id: 1, status, data_hora: new Date().toISOString() }), deviceUnavailable: status === null } });
+  });
+  await page.goto('/');
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 ativo');
+  await expect(page.locator('#device-updated')).toContainText('Último status informado:');
+  await expect(page.locator('#radar')).toHaveClass(/is-motion/);
+  status = 'inativo';
+  await page.locator('#refresh-button').click();
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 inativo');
+  await expect(page.locator('#detection-count')).toHaveText('1');
+  status = null;
+  await page.locator('#refresh-button').click();
+  await expect(page.locator('#environment-footer')).toHaveText('Status do ESP32 indisponível');
+  await expect(page.locator('#recent-events')).toContainText('Movimento detectado');
+});
+
 test('inactivity appears in chart, latest reading, history and filtered CSV', async ({ page }) => {
   await page.route('**/api/dashboard?*', route => {
     const events = Monitor.combineReadings(

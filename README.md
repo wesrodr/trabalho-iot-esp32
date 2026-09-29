@@ -83,6 +83,10 @@ Teste a função acessando `https://SEU-DOMINIO/api/dashboard?hours=24`. Com uma
 
 Execute também [`supabase/atividade_sensor.sql`](supabase/atividade_sensor.sql) para criar a tabela de não execuções, caso necessário, e permitir sua leitura pelo painel. O script preserva os registros existentes e não configura permissões de escrita.
 
+Para informar o estado do ESP32, execute [`supabase/status_dispositivo.sql`](supabase/status_dispositivo.sql). O painel consulta o último registro de `status_dispositivo` por `data_hora`, usando `id` para desempate, e mostra o estado e seu horário no cartão do ambiente. Aceita `ativo/inativo`, `online/offline` e `ligado/desligado`, sem diferenciar maiúsculas. Valores desconhecidos ou tabela vazia aparecem como status não informado; falhas de consulta aparecem como status indisponível, preservando o histórico de movimento.
+
+O dispositivo precisa enviar `status` e `data_hora` para essa tabela. O SQL configura somente leitura; o firmware incluído ainda não envia status. O painel mostra o último estado informado, sem presumir desconexão por tempo decorrido. Uma queda de energia requer um mecanismo de heartbeat e expiração para ser detectada automaticamente. Status do dispositivo não entra na contagem de movimento do gráfico.
+
 O backend consulta `eventos` (`id`, `numero_evento`, `data_hora`) e `atividade_sensor` (`id`, `data_hora`), sem devolver a chave ao navegador. Cada registro de `atividade_sensor` representa uma leitura sem movimento; sua data deve ser `timestamptz`, por exemplo `2026-09-29T14:00:00-03:00`. A consulta considera até 1.000 registros por tabela e exibe um aviso quando atinge esse limite.
 
 O gráfico apresenta contagens separadas para movimento e ausência de movimento. Os históricos combinam as duas tabelas por data, com filtros por tipo e exportação CSV identificando a tabela de origem. Ausência de registros não é interpretada como ausência de movimento.
@@ -103,7 +107,7 @@ O ESP32 envia cada detecção do PIR para a API REST do Supabase, na tabela `eve
 - Permite visualizar períodos de uma hora, 24 horas e sete dias.
 - Filtra o histórico e exporta os resultados em CSV.
 - Exibe horários em UTC−3 e agrupa reenvios com o mesmo número e horário.
-- Mostra a última leitura registrada, com ou sem movimento; não informa se o sensor está conectado nem se há movimento neste instante.
+- Mostra a última leitura registrada e o último status informado pelo ESP32, com seus horários.
 - A demonstração não grava dados no Supabase nem controla um dispositivo real.
 
 ## Testes
