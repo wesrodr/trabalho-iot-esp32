@@ -4,9 +4,9 @@ Projeto acadêmico de monitoramento de movimento com sensor PIR, ESP32, Supabase
 
 ## Identificação
 
-- **Alunos:** [Nome do aluno 1], [Nome do aluno 2], [Nome do aluno 3]
-- **Professor(a):** [Nome do(a) professor(a)]
-- **Faculdade:** [Nome da faculdade]
+- **Alunos:** Gisele Maria, Markus Aurélius, Juliano Moraes, Sheylla Pereira, Wesley Ruan
+- **Professor(a):** João Victor Lopes de Loiola
+- **Faculdade:** Piauí Instituto de Tecnologia
 
 > Substitua os campos entre colchetes pelos nomes corretos antes da entrega.
 
