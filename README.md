@@ -8,8 +8,6 @@ Projeto acadêmico de monitoramento de movimento com sensor PIR, ESP32, Supabase
 - **Professor(a):** João Victor Lopes de Loiola
 - **Faculdade:** Piauí Instituto de Tecnologia
 
-> Substitua os campos entre colchetes pelos nomes corretos antes da entrega.
-
 ## Estrutura do projeto
 
 ```text
