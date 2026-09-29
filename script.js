@@ -59,8 +59,6 @@
   let latest = null;
   let failed = false;
   let lastRefresh = null;
-  let limited = false;
-  let duplicates = 0;
   let hours = 24;
   let page = 1;
   let requestVersion = 0;
@@ -94,14 +92,6 @@
     $('refresh-dot').className = `dot ${failed ? 'amber' : 'green'}`;
     text('recent-footer-text', failed ? 'Últimos dados disponíveis · Brasília (UTC−3)' : 'Horário da detecção · Brasília (UTC−3)');
     $('recent-dot').className = `dot ${failed ? 'amber' : 'green'}`;
-    const undated = readings.filter(row => !row.recorded_at).length;
-    const future = readings.filter(row => row.recorded_at && Date.parse(row.recorded_at) > Date.now()).length;
-    const notes = ['O ESP32 envia apenas detecções. A ausência de registros não confirma ausência de movimento ou desligamento.'];
-    if (undated) notes.push(`${undated} registro(s) sem data válida: disponíveis no histórico, fora do gráfico.`);
-    if (future) notes.push(`${future} registro(s) com data futura fora do período; confira o relógio do dispositivo.`);
-    if (duplicates) notes.push(`${duplicates} reenvio(s) com mesmo número e horário agrupado(s).`);
-    if (limited) notes.push('Exibindo somente os 1.000 registros mais recentemente inseridos; o período pode estar incompleto.');
-    text('data-notice', notes.join(' '));
   }
   function renderRecent() {
     const rows = visibleReadings();
@@ -186,7 +176,6 @@
         readings = result.events; latest = result.latest;
       }
       isDemo = result.mode === 'demo'; loaded = true;
-      limited = result.limited === true; duplicates = Number(result.duplicates) || 0;
       failed = false; lastRefresh = Date.now();
       $('connection-error').hidden = true;
       render();

@@ -88,5 +88,4 @@ test('mobile and desktop fit viewport with loaded fonts and image', async ({ pag
     }
   }
   await expect(page.locator('#dashboard')).toBeVisible();
-  await expect(page.locator('.data-context')).toContainText('Como interpretar os dados');
 });
