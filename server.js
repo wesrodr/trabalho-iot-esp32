@@ -20,7 +20,7 @@ function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
     if (req.method !== 'GET') { res.setHeader('Allow', 'GET'); return json(res, 405, { error: 'Método não permitido.' }); }
     const hours = Number(requestUrl.searchParams.get('hours') || 24);
     if (![1, 24, 168].includes(hours)) return json(res, 400, { error: 'Período inválido.' });
-    if (demo) return json(res, 200, { mode: 'demo', events: demoEvents, latest: demoEvents[0], device: Monitor.normalizeDeviceStatus({ id: 1, status: 'ativo', data_hora: new Date().toISOString() }), deviceUnavailable: false, duplicates: 0, undated: 0, limited: false });
+    if (demo) return json(res, 200, { mode: 'demo', events: demoEvents, latest: demoEvents[0], device: Monitor.normalizeDeviceStatus({ id: 1, status: 'online', data_hora: new Date().toISOString() }), deviceUnavailable: false, duplicates: 0, undated: 0, limited: false });
     try {
       const projectUrl = new URL(url);
       if (!key || projectUrl.protocol !== 'https:' || !projectUrl.hostname.endsWith('.supabase.co') || projectUrl.username || projectUrl.password || projectUrl.port) throw new Error('Invalid server configuration');

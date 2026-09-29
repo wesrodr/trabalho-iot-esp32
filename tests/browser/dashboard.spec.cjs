@@ -1,19 +1,37 @@
 const { test, expect } = require('@playwright/test');
 const Monitor = require('../../monitor');
 
+test('online heartbeat expires automatically and a new heartbeat restores online', async ({ page }) => {
+  const initial = Date.now();
+  let heartbeat = initial;
+  await page.clock.install({ time: initial });
+  await page.route('**/api/dashboard?*', route => route.fulfill({ json: {
+    mode: 'live', events: [], latest: null,
+    device: Monitor.normalizeDeviceStatus({ id: 1, status: 'online', data_hora: new Date(heartbeat).toISOString() })
+  } }));
+  await page.goto('/');
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 ONLINE');
+  await page.clock.fastForward(125000);
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 OFFLINE');
+  heartbeat = await page.evaluate(() => Date.now());
+  await page.locator('#refresh-button').click();
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 ONLINE');
+});
+
 test('device status updates independently of movement and shows unknown on failed reads', async ({ page }) => {
-  let status = 'ativo';
+  let status = 'online';
+  let age = 0;
   await page.route('**/api/dashboard?*', route => {
     const normalized = Monitor.normalizeEvents([{ id: 1, numero_evento: 9, data_hora: Monitor.deviceDate(Date.now()) }]);
-    return route.fulfill({ json: { mode: 'live', ...normalized, device: status === null ? null : Monitor.normalizeDeviceStatus({ id: 1, status, data_hora: new Date().toISOString() }), deviceUnavailable: status === null } });
+    return route.fulfill({ json: { mode: 'live', ...normalized, device: status === null ? null : Monitor.normalizeDeviceStatus({ id: 1, status, data_hora: new Date(Date.now() - age).toISOString() }), deviceUnavailable: status === null } });
   });
   await page.goto('/');
-  await expect(page.locator('#environment-footer')).toHaveText('ESP32 ativo');
-  await expect(page.locator('#device-updated')).toContainText('Último status informado:');
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 ONLINE');
+  await expect(page.locator('#device-updated')).toContainText('Último sinal:');
   await expect(page.locator('#radar')).toHaveClass(/is-motion/);
-  status = 'inativo';
+  age = 120001;
   await page.locator('#refresh-button').click();
-  await expect(page.locator('#environment-footer')).toHaveText('ESP32 inativo');
+  await expect(page.locator('#environment-footer')).toHaveText('ESP32 OFFLINE');
   await expect(page.locator('#detection-count')).toHaveText('1');
   status = null;
   await page.locator('#refresh-button').click();

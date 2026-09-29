@@ -5,14 +5,18 @@ const now = Date.parse('2026-09-28T15:00:00Z');
 const { normalizeActivity, combineReadings } = require('../monitor');
 const { normalizeDeviceStatus } = require('../monitor');
 
-test('device status distinguishes active, inactive and unknown without assuming a heartbeat', () => {
-  const row = { id: 1, data_hora: '2026-09-28T12:00:00-03:00', status: ' ATIVO ' };
-  assert.equal(normalizeDeviceStatus(row).state, 'active');
-  assert.equal(normalizeDeviceStatus(row).recorded_at, '2026-09-28T15:00:00.000Z');
-  for (const status of ['inativo', 'offline', 'desligado']) assert.equal(normalizeDeviceStatus({ ...row, status }).state, 'inactive');
-  for (const status of ['online', 'ligado']) assert.equal(normalizeDeviceStatus({ ...row, status }).state, 'active');
-  assert.equal(normalizeDeviceStatus({ ...row, status: 'unexpected' }).state, 'unknown');
-  assert.equal(normalizeDeviceStatus({ ...row, status: null, data_hora: null }).state, 'unknown');
+test('heartbeat expires only after two minutes and needs a valid online timestamp', () => {
+  const { deviceHeartbeatState } = require('../monitor');
+  const row = { id: 1, data_hora: '2026-09-28T12:00:00-03:00', status: ' ONLINE ' };
+  const device = normalizeDeviceStatus(row);
+  assert.equal(device.recorded_at, '2026-09-28T15:00:00.000Z');
+  assert.equal(deviceHeartbeatState(device, now), 'active');
+  assert.equal(deviceHeartbeatState(device, now + 120000), 'active');
+  assert.equal(deviceHeartbeatState(device, now + 120001), 'inactive');
+  assert.equal(deviceHeartbeatState(device, now - 1), 'unknown');
+  assert.equal(deviceHeartbeatState(null, now), 'unknown');
+  assert.equal(deviceHeartbeatState({ ...device, recorded_at: null }, now), 'unknown');
+  assert.equal(deviceHeartbeatState({ ...device, status: 'unexpected' }, now), 'unknown');
   assert.equal(normalizeDeviceStatus(null), null);
   assert.throws(() => normalizeDeviceStatus({ ...row, data_hora: 'invalid' }));
 });
