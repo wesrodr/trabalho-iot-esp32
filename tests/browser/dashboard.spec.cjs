@@ -82,6 +82,12 @@ test('mobile and desktop fit viewport with loaded fonts and image', async ({ pag
     expect(overflowing, `overflow at ${width}px`).toEqual([]);
     const cardSpace = await page.evaluate(() => document.querySelector('.environment-panel').getBoundingClientRect().bottom - document.querySelector('.environment-footer').getBoundingClientRect().bottom);
     expect(cardSpace, `unused space below detection footer at ${width}px`).toBeLessThanOrEqual(2);
+    if (width === 1440) {
+      const cardBottoms = await page.locator('.dashboard-grid > .panel').evaluateAll(cards => cards.map(card => card.getBoundingClientRect().bottom));
+      expect(Math.max(...cardBottoms) - Math.min(...cardBottoms), 'desktop card bottoms').toBeLessThanOrEqual(2);
+      const chartFill = await page.locator('#chart-area').evaluate(area => area.querySelector('svg').getBoundingClientRect().height / area.getBoundingClientRect().height);
+      expect(chartFill, 'chart fills its card').toBeGreaterThan(.95);
+    }
     if (width <= 390) {
       const headerHeight = await page.locator('.header').evaluate(el => el.getBoundingClientRect().height);
       expect(headerHeight, `header height at ${width}px`).toBeLessThanOrEqual(150);

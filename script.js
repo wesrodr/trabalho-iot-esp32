@@ -115,8 +115,9 @@
     const ceiling = Math.ceil(max / 4) * 4;
     // Use CSS pixels so the labels stay readable on small screens.
     const chartWidth = Math.max(240, $('chart-area').clientWidth);
-    $('activity-chart').setAttribute('viewBox', `0 0 ${chartWidth} 230`);
-    const left = 34, top = 14, width = chartWidth - 52, height = 170;
+    const chartHeight = Math.max(230, $('chart-area').clientHeight);
+    $('activity-chart').setAttribute('viewBox', `0 0 ${chartWidth} ${chartHeight}`);
+    const left = 34, top = 14, width = chartWidth - 52, height = chartHeight - 60;
     let svg = '';
     for (let i = 0; i <= 4; i++) {
       const y = top + height - i * height / 4;
@@ -127,7 +128,7 @@
     const labelEvery = Math.ceil(bins.length / Math.max(3, Math.floor(width / 72)));
     const endX = left + width;
     const endLabel = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: Monitor.timeZone });
-    svg += `<line x1="${endX}" y1="${top}" x2="${endX}" y2="${top + height}" stroke="#f0f3f8"/><text data-axis-end="now" x="${endX - 2}" y="213" text-anchor="end" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif"><title>Horário atual</title>${endLabel}</text>`;
+    svg += `<line x1="${endX}" y1="${top}" x2="${endX}" y2="${top + height}" stroke="#f0f3f8"/><text data-axis-end="now" x="${endX - 2}" y="${chartHeight - 17}" text-anchor="end" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif"><title>Horário atual</title>${endLabel}</text>`;
     bins.forEach((bin, index) => {
       const x = left + (index + .5) * slot;
       const barHeight = bin.count / ceiling * height;
@@ -135,7 +136,7 @@
       const end = hours === 168 ? new Date(bin.end).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', timeZone: Monitor.timeZone }) : new Date(bin.end).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: Monitor.timeZone });
       const description = `${label}–${end}: ${bin.count} ${bin.count === 1 ? 'detecção' : 'detecções'}`;
       if (index % labelEvery === 0) {
-        svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#f0f3f8"/><text x="${Math.max(left + 17, Math.min(x, chartWidth - 24))}" y="213" text-anchor="middle" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif">${label}</text>`;
+        svg += `<line x1="${x}" y1="${top}" x2="${x}" y2="${top + height}" stroke="#f0f3f8"/><text x="${Math.max(left + 17, Math.min(x, chartWidth - 24))}" y="${chartHeight - 17}" text-anchor="middle" fill="#5e718c" font-size="14" font-family="DM Sans,sans-serif">${label}</text>`;
       }
       svg += `<rect class="chart-bar" x="${x - barWidth / 2}" y="${top + height - Math.max(barHeight, 2)}" width="${barWidth}" height="${Math.max(barHeight, 2)}" rx="2" opacity="${bin.count ? 1 : .13}" tabindex="${bin.count ? 0 : -1}" role="img" aria-label="${description}" data-tooltip="${description}"><title>${description}</title></rect>`;
     });
@@ -221,9 +222,11 @@
   $('export-button').addEventListener('click', () => { const blob = new Blob([Monitor.csv(historyRows())], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `esp32-${isDemo ? 'demonstracao-' : ''}${new Date().toISOString().slice(0, 10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Histórico exportado.'); });
   render(); refresh();
   let chartRenderedWidth = $('chart-area').clientWidth;
+  let chartRenderedHeight = $('chart-area').clientHeight;
   new ResizeObserver(() => {
     const width = $('chart-area').clientWidth;
-    if (width !== chartRenderedWidth) { chartRenderedWidth = width; renderChart(); }
+    const height = $('chart-area').clientHeight;
+    if (width !== chartRenderedWidth || height !== chartRenderedHeight) { chartRenderedWidth = width; chartRenderedHeight = height; renderChart(); }
   }).observe($('chart-area'));
   setInterval(() => { if (!document.hidden) { renderStatus(); refresh(); } }, 5000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
