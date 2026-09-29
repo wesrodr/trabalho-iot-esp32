@@ -213,6 +213,7 @@ h2{margin:0;font:750 26px/1.4 var(--heading);letter-spacing:-.6px}
 .about-note{display:flex;align-items:center;gap:12px;background:#f3f7fd;padding:15px;border-radius:8px;font-size:14px;color:#8599b4;margin-bottom:22px}
 .about-note>i{color:#6c89b1}
 .about-note strong{font-weight:550;color:#597797}
+.participants-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
 .full-width{width:100%}
 .toast{position:fixed;bottom:25px;left:50%;transform:translateX(-50%);z-index:100;background:#183451;color:#fff;padding:13px 22px;font-size:14px;border-radius:10px;box-shadow:0 10px 35px #18345130;max-width:calc(100% - 30px);text-align:center}
 .alert-banner{padding:12px 16px;margin-bottom:16px;border:1px solid #f1d7ae;background:#fff8ed;color:#a57b3b;border-radius:9px;font-size:14px}

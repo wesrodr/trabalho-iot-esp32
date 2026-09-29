@@ -230,7 +230,6 @@
   $('previous-page').addEventListener('click', () => { page--; renderHistory(); });
   $('next-page').addEventListener('click', () => { page++; renderHistory(); });
   $('export-button').addEventListener('click', () => { const blob = new Blob([Monitor.csv(historyRows())], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `esp32-${isDemo ? 'demonstracao-' : ''}${new Date().toISOString().slice(0, 10)}.csv`; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); notify('Histórico exportado.'); });
-  text('year', new Date().getFullYear());
   render(); refresh();
   let chartRenderedWidth = $('chart-area').clientWidth;
   new ResizeObserver(() => {
