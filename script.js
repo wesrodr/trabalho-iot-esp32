@@ -103,6 +103,12 @@
   let recentPage = 1;
   const visibleReadings = () =>
     readings.filter((row) => !row.recorded_at || Monitor.inPeriod(row, hours));
+  // Tempo decorrido desde a última atualização ("agora", "há 12 s", "há 3 min")
+  function ago(timestamp) {
+    const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
+    if (seconds < 5) return "agora";
+    return seconds < 60 ? `há ${seconds} s` : `há ${Math.floor(seconds / 60)} min`;
+  }
   // Mostra uma mensagem temporária (toast)
   function notify(message) {
     clearTimeout(toastTimer);
@@ -154,10 +160,7 @@
     text("mode-badge", !loaded ? "AGUARDANDO" : isDemo ? "DEMONSTRAÇÃO" : "HISTÓRICO");
     $("mode-badge").className = `badge ${!loaded ? "offline" : isDemo ? "demo-badge" : "normal"}`;
     $("demo-toolbar").hidden = !isDemo || failed;
-    text(
-      "refresh-label",
-      lastRefresh ? `Atualizado às ${formatTime(lastRefresh)}` : "Buscando dados…",
-    );
+    text("refresh-label", lastRefresh ? `Atualizado ${ago(lastRefresh)}` : "Buscando dados…");
     $("refresh-dot").className = `dot ${failed ? "amber" : "green"}`;
     text(
       "recent-footer-text",
@@ -174,14 +177,19 @@
     recentPage = Math.min(recentPage, pages);
     const start = (recentPage - 1) * recentPageSize;
     const pageRows = rows.slice(start, start + recentPageSize);
-    $("recent-events").innerHTML = pageRows.length
-      ? pageRows
-          .map(
-            (row) =>
-              `<tr><td title="${escape(formatDate(row.recorded_at))}">${row.recorded_at ? formatTime(row.recorded_at) : "Sem data"}<small class="event-number">${row.source === "atividade_sensor" ? "Leitura #" + escape(row.id) : "Evento " + escape(row.numero_evento ?? "—")}</small></td><td>${statusLabel(row)}</td></tr>`,
-          )
-          .join("")
-      : '<tr><td class="empty-cell" colspan="2">Nenhum registro neste período.</td></tr>';
+    const skeletonRow =
+      '<tr class="skeleton-row"><td><span class="skeleton"></span></td><td><span class="skeleton"></span></td></tr>';
+    $("recent-events").innerHTML =
+      !loaded && !failed
+        ? skeletonRow.repeat(recentPageSize)
+        : pageRows.length
+          ? pageRows
+              .map(
+                (row) =>
+                  `<tr><td title="${escape(formatDate(row.recorded_at))}">${row.recorded_at ? formatTime(row.recorded_at) : "Sem data"}<small class="event-number">${row.source === "atividade_sensor" ? "Leitura #" + escape(row.id) : "Evento " + escape(row.numero_evento ?? "—")}</small></td><td>${statusLabel(row)}</td></tr>`,
+              )
+              .join("")
+          : '<tr><td class="empty-cell" colspan="2">Nenhum registro neste período.</td></tr>';
     $("recent-pagination").hidden = rows.length <= recentPageSize;
     text(
       "recent-count",
@@ -288,6 +296,7 @@
         const hide = () => {
           $("chart-tooltip").hidden = true;
         };
+        bar.addEventListener("click", show);
         bar.addEventListener("mouseenter", show);
         bar.addEventListener("focus", show);
         bar.addEventListener("mouseleave", hide);
@@ -311,7 +320,7 @@
           .slice((page - 1) * pageSize, page * pageSize)
           .map(
             (row) =>
-              `<tr><td>${formatDate(row.recorded_at)}</td><td>${formatTime(row.recorded_at)}</td><td>${escape(row.numero_evento ?? "—")}</td><td>${statusLabel(row)}</td></tr>`,
+              `<tr><td data-label="Data">${formatDate(row.recorded_at)}</td><td data-label="Horário">${formatTime(row.recorded_at)}</td><td data-label="Evento">${escape(row.numero_evento ?? "—")}</td><td data-label="Status">${statusLabel(row)}</td></tr>`,
           )
           .join("")
       : '<tr><td class="empty-cell" colspan="4">Nenhum registro encontrado para estes filtros.</td></tr>';
@@ -333,6 +342,7 @@
     renderStatus();
     renderRecent();
     renderChart();
+    $("activity-chart").classList.toggle("is-loading", !loaded && !failed);
     if ($("history-dialog").open) renderHistory();
   }
   // DADOS — Busca os registros na API e atualiza a tela
@@ -453,6 +463,10 @@
     );
     observer.observe($("dashboard"));
   }
+  // Toque fora das barras fecha o tooltip do gráfico
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest("[data-tooltip]")) $("chart-tooltip").hidden = true;
+  });
   // Botões, paginação e filtros
   $("refresh-button").addEventListener("click", () => refresh(true));
   $("recent-previous").addEventListener("click", () => {
@@ -516,6 +530,10 @@
       renderChart();
     }
   }).observe($("chart-area"));
+  // Mantém o "há X s" correto entre uma busca e outra
+  setInterval(() => {
+    if (lastRefresh) text("refresh-label", `Atualizado ${ago(lastRefresh)}`);
+  }, 1000);
   // Atualização automática a cada 5 s (pausa quando a aba está oculta)
   setInterval(() => {
     if (!document.hidden) {
