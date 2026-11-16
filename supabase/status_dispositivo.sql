@@ -9,7 +9,12 @@ create index if not exists status_dispositivo_data_hora_idx
   on public.status_dispositivo (data_hora desc nulls last, id desc);
 alter table public.status_dispositivo enable row level security;
 grant select on public.status_dispositivo to anon, authenticated;
+grant insert on public.status_dispositivo to anon, authenticated;
 drop policy if exists "Dashboard can read device status" on public.status_dispositivo;
 create policy "Dashboard can read device status"
   on public.status_dispositivo for select to anon, authenticated using (true);
+drop policy if exists "ESP32 can report device status" on public.status_dispositivo;
+create policy "ESP32 can report device status"
+  on public.status_dispositivo for insert to anon, authenticated
+  with check (status = 'online' and data_hora is not null);
 commit;

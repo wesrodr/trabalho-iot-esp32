@@ -85,7 +85,7 @@ Execute também [`supabase/atividade_sensor.sql`](supabase/atividade_sensor.sql)
 
 Para informar o estado do ESP32, execute [`supabase/status_dispositivo.sql`](supabase/status_dispositivo.sql). O painel consulta o último registro de `status_dispositivo` por `data_hora`, usando `id` para desempate, e mostra o estado e seu horário no cartão do ambiente. O ESP32 envia somente `online`, periodicamente. Até 2 minutos após o último sinal, o painel mostra ONLINE; acima de 2 minutos, mostra OFFLINE. O estado é recalculado a cada 5 segundos com a aba visível. O indicador mostra somente ONLINE ou OFFLINE. Sem sinal válido, com tabela vazia ou em falha de consulta, mostra OFFLINE e explica o motivo abaixo, preservando o histórico de movimento.
 
-O dispositivo precisa enviar `status` e `data_hora` para essa tabela. O SQL configura somente leitura; o firmware incluído ainda não envia status. O ESP32 não precisa gravar `offline`: a ausência de heartbeat por mais de 2 minutos faz o painel exibir OFFLINE. Datas ausentes, inválidas ou futuras não indicam ONLINE. O banco e o navegador precisam ter relógios sincronizados. Status do dispositivo não entra na contagem de movimento do gráfico.
+O firmware envia um heartbeat `online` a cada 30 segundos para `status_dispositivo`, usando horário UTC. Execute o SQL acima para liberar a inserção anônima, configure as credenciais no sketch e grave o firmware atualizado. O ESP32 não precisa gravar `offline`: a ausência de heartbeat por mais de 2 minutos faz o painel exibir OFFLINE. Datas ausentes, inválidas ou futuras não indicam ONLINE. Status do dispositivo não entra na contagem de movimento do gráfico.
 
 O backend consulta `eventos` (`id`, `numero_evento`, `data_hora`) e `atividade_sensor` (`id`, `data_hora`), sem devolver a chave ao navegador. Cada registro de `atividade_sensor` representa uma leitura sem movimento; sua data deve ser `timestamptz`, por exemplo `2026-09-29T14:00:00-03:00`. A consulta considera até 1.000 registros por tabela e exibe um aviso quando atinge esse limite.
 
@@ -93,7 +93,7 @@ O gráfico apresenta contagens separadas para movimento e ausência de movimento
 
 O firmware incluído ainda envia apenas execuções para `eventos`. Para receber não execuções reais, o dispositivo precisa gravar as leituras sem movimento em `atividade_sensor` com as permissões de escrita adequadas.
 
-**Atenção à segurança:** a política atual permite inserção anônima na tabela `eventos`, então qualquer pessoa com a chave pública pode enviar registros válidos. Não use a chave `service_role` no firmware, no frontend nem no GitHub. Para uso em produção, restrinja a escrita com autenticação ou use uma Edge Function protegida.
+**Atenção à segurança:** as políticas permitem inserção anônima de eventos e de heartbeats `online`, então qualquer pessoa com a chave pública pode enviar registros válidos. Não use a chave `service_role` no firmware, no frontend nem no GitHub. Para uso em produção, restrinja a escrita com autenticação ou use uma Edge Function protegida.
 
 ## Firmware do ESP32
 

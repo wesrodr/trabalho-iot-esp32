@@ -36,6 +36,8 @@ bool alarmeAtivo = false;
 const unsigned long DURACAO_ALARME = 1000;
 
 const unsigned long INTERVALO_RETRY_EVENTOS = 2000;
+const unsigned long INTERVALO_HEARTBEAT = 30000;
+unsigned long ultimoHeartbeat = 0;
 
 const char* ARQUIVO_EVENTOS = "/eventos.txt";
 Preferences preferencias;
@@ -177,6 +179,39 @@ bool enviarEventoSupabase(unsigned long numero, String dataHora) {
   Serial.println(codigoResposta);
   Serial.println(http.getString());
   http.end();
+  return false;
+}
+
+bool enviarHeartbeat() {
+  if (WiFi.status() != WL_CONNECTED) return false;
+
+  time_t agora = time(nullptr);
+  if (agora < 100000) {
+    Serial.println("Horario ainda nao sincronizado; heartbeat nao enviado.");
+    return false;
+  }
+
+  struct tm utc;
+  gmtime_r(&agora, &utc);
+  char dataHora[25];
+  strftime(dataHora, sizeof(dataHora), "%Y-%m-%dT%H:%M:%SZ", &utc);
+
+  HTTPClient http;
+  String url = String(SUPABASE_URL) + "/rest/v1/status_dispositivo";
+  http.begin(url);
+  http.addHeader("apikey", SUPABASE_KEY);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Prefer", "return=minimal");
+
+  String dados = String("{\"status\":\"online\",\"data_hora\":\"") + dataHora + "\"}";
+  int codigoResposta = http.POST(dados);
+  http.end();
+
+  if (codigoResposta >= 200 && codigoResposta < 300) {
+    Serial.println("Heartbeat online enviado.");
+    return true;
+  }
+  Serial.printf("Erro ao enviar heartbeat. HTTP: %d\n", codigoResposta);
   return false;
 }
 
@@ -405,6 +440,12 @@ void setup() {
 
 void loop() {
   verificarComandosSerial();
+
+  if (WiFi.status() == WL_CONNECTED &&
+      (ultimoHeartbeat == 0 || millis() - ultimoHeartbeat >= INTERVALO_HEARTBEAT)) {
+    ultimoHeartbeat = millis();
+    enviarHeartbeat();
+  }
 
   bool movimentoAtual = digitalRead(PIR_PIN) == HIGH;
   bool novoMovimento = movimentoAtual && !movimentoAnterior;
