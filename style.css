@@ -3303,6 +3303,80 @@ html {
 .cluster-progress-fill.blue { background: #2379f5; }
 .cluster-progress-fill.coral { background: #fa6c7e; }
 
+.mining-highlights-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+.mining-highlight-card {
+  background: #fbfdff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 10px #00000005;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.mining-highlight-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.mining-highlight-card.highlight-peak::before {
+  background: #fa6c7e;
+}
+.mining-highlight-card.highlight-calm::before {
+  background: #009e80;
+}
+.mining-highlight-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mining-highlight-icon.coral {
+  background: #feeef1;
+  color: #fa6c7e;
+}
+.mining-highlight-icon.green {
+  background: #e6f7f3;
+  color: #009e80;
+}
+.mining-highlight-body {
+  flex: 1;
+  min-width: 0;
+}
+.mining-highlight-kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.mining-highlight-val {
+  font: 800 22px/1.2 var(--heading);
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.mining-highlight-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
 .mining-chart-box {
   background: #fbfdff;
   border: 1px solid var(--border);
@@ -3369,11 +3443,20 @@ html {
 [data-theme="dark"] .mining-toolbar,
 [data-theme="dark"] .mining-panel,
 [data-theme="dark"] .cluster-card,
+[data-theme="dark"] .mining-highlight-card,
 [data-theme="dark"] .mining-chart-box,
 [data-theme="dark"] .mining-meta-footer {
   background: #19263a;
   border-color: #2c3d56;
   box-shadow: 0 4px 20px #00000020;
+}
+[data-theme="dark"] .mining-highlight-icon.coral {
+  background: #44222b;
+  color: #ff8296;
+}
+[data-theme="dark"] .mining-highlight-icon.green {
+  background: #183832;
+  color: #58d7b5;
 }
 [data-theme="dark"] .mining-kpi-icon.blue { background: #1e3352; color: #70acff; }
 [data-theme="dark"] .mining-kpi-icon.green { background: #183832; color: #58d7b5; }
@@ -3414,7 +3497,8 @@ html {
   .mining-kpi-grid {
     grid-template-columns: 1fr;
   }
-  .cluster-cards-container {
+  .cluster-cards-container,
+  .mining-highlights-container {
     grid-template-columns: 1fr;
   }
   .mining-panel {

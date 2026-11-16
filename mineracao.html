@@ -232,16 +232,26 @@
             </div>
 
             <!-- Destaques de maior e menor atividade -->
-            <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px;">
-              <div style="flex: 1; min-width: 260px; padding: 14px 18px; background: #f4f8fd; border: 1px solid var(--border); border-radius: 10px;">
-                <small style="color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Pico de Maior Atividade</small>
-                <div style="font: 750 18px/1.2 var(--heading); color: var(--ink); margin-top: 4px;" id="highlight-peak-period">—</div>
-                <small style="color: var(--muted);">Maior concentração histórica de movimentação</small>
+            <div class="mining-highlights-container">
+              <div class="mining-highlight-card highlight-peak">
+                <div class="mining-highlight-icon coral">
+                  <i data-icon="walk"></i>
+                </div>
+                <div class="mining-highlight-body">
+                  <span class="mining-highlight-kicker">Pico de Maior Atividade</span>
+                  <div class="mining-highlight-val" id="highlight-peak-period">—</div>
+                  <span class="mining-highlight-sub">Maior concentração histórica de movimentação</span>
+                </div>
               </div>
-              <div style="flex: 1; min-width: 260px; padding: 14px 18px; background: #f4f8fd; border: 1px solid var(--border); border-radius: 10px;">
-                <small style="color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Período Mais Calmo</small>
-                <div style="font: 750 18px/1.2 var(--heading); color: var(--ink); margin-top: 4px;" id="highlight-calm-period">—</div>
-                <small style="color: var(--muted);">Menor índice de acionamentos do sensor PIR</small>
+              <div class="mining-highlight-card highlight-calm">
+                <div class="mining-highlight-icon green">
+                  <i data-icon="clock"></i>
+                </div>
+                <div class="mining-highlight-body">
+                  <span class="mining-highlight-kicker">Período Mais Calmo</span>
+                  <div class="mining-highlight-val" id="highlight-calm-period">—</div>
+                  <span class="mining-highlight-sub">Menor índice de acionamentos do sensor PIR</span>
+                </div>
               </div>
             </div>
 
