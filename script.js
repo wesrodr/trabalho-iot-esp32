@@ -145,8 +145,18 @@
           : "Leitura registrada sem data válida."
         : "Aguardando registros do sensor.",
     );
-    const deviceState =
-      failed || deviceUnavailable ? "unavailable" : Monitor.deviceHeartbeatState(device);
+    const heartbeatState = Monitor.deviceHeartbeatState(device);
+    const movementState = Monitor.deviceActivityState(readings);
+    const useMovementSignal = !!movementState.recorded_at &&
+      (!device?.recorded_at || Date.parse(movementState.recorded_at) > Date.parse(device.recorded_at));
+    const deviceState = failed
+      ? "unavailable"
+      : useMovementSignal
+        ? movementState.state
+        : deviceUnavailable
+          ? "unavailable"
+          : heartbeatState;
+    const signalDate = useMovementSignal ? movementState.recorded_at : device?.recorded_at;
     text("environment-footer", deviceState === "active" ? "ESP32 ONLINE" : "ESP32 OFFLINE");
     $("environment-footer").dataset.state = deviceState === "active" ? "active" : "inactive";
     text(
@@ -155,7 +165,7 @@
         ? "Não foi possível consultar o sinal do dispositivo."
         : deviceState === "unknown"
           ? "Nenhum sinal válido recebido."
-          : `Último sinal: ${formatDate(device.recorded_at)} às ${formatTime(device.recorded_at)}${deviceState === "inactive" ? " · Mais de 2 minutos sem sinal." : ""}`,
+          : `${useMovementSignal ? "Ultimo movimento" : "Ultimo sinal"}: ${formatDate(signalDate)} as ${formatTime(signalDate)}${deviceState === "inactive" ? " - Mais de 2 minutos sem atividade." : useMovementSignal ? " - Presenca inferida pelo movimento." : ""}`,
     );
     text("mode-badge", !loaded ? "AGUARDANDO" : isDemo ? "DEMONSTRAÇÃO" : "HISTÓRICO");
     $("mode-badge").className = `badge ${!loaded ? "offline" : isDemo ? "demo-badge" : "normal"}`;

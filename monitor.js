@@ -142,6 +142,16 @@
     if (!Number.isFinite(time) || time > now) return "unknown";
     return now - time <= 120000 ? "active" : "inactive";
   }
+  // Sem heartbeat no firmware, usa o movimento mais recente como sinal de atividade.
+  function deviceActivityState(readings, now = Date.now()) {
+    const latest = readings.find(
+      (row) => row.source === "eventos" && Number.isFinite(Date.parse(row.recorded_at)),
+    );
+    if (!latest) return { state: "unknown", recorded_at: null };
+    const time = Date.parse(latest.recorded_at);
+    if (time > now) return { state: "unknown", recorded_at: latest.recorded_at };
+    return { state: now - time <= 120000 ? "active" : "inactive", recorded_at: latest.recorded_at };
+  }
   // Agrupa as leituras em intervalos (barras do gráfico): 12 para 1 h, 24 para 24 h e 7 para 7 dias
   function aggregate(readings, hours, now = Date.now()) {
     const count = hours === 1 ? 12 : hours === 168 ? 7 : 24;
@@ -232,6 +242,7 @@
     normalizeActivity,
     normalizeDeviceStatus,
     deviceHeartbeatState,
+    deviceActivityState,
     combineReadings,
     validReading,
     inPeriod,
