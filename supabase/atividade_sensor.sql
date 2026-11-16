@@ -8,7 +8,20 @@ create index if not exists atividade_sensor_data_hora_idx
   on public.atividade_sensor (data_hora desc nulls last, id desc);
 alter table public.atividade_sensor enable row level security;
 grant select on public.atividade_sensor to anon, authenticated;
+grant insert (data_hora) on public.atividade_sensor to anon;
+do $$
+declare
+  identity_sequence text := pg_get_serial_sequence('public.atividade_sensor', 'id');
+begin
+  if identity_sequence is not null then
+    execute format('grant usage on sequence %s to anon', identity_sequence);
+  end if;
+end $$;
 drop policy if exists "Dashboard can read inactivity" on public.atividade_sensor;
 create policy "Dashboard can read inactivity"
   on public.atividade_sensor for select to anon, authenticated using (true);
+drop policy if exists "ESP32 can insert inactivity readings" on public.atividade_sensor;
+create policy "ESP32 can insert inactivity readings"
+  on public.atividade_sensor for insert to anon
+  with check (data_hora is not null);
 commit;

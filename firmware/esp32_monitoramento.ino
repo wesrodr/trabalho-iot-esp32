@@ -37,7 +37,9 @@ const unsigned long DURACAO_ALARME = 1000;
 
 const unsigned long INTERVALO_RETRY_EVENTOS = 2000;
 const unsigned long INTERVALO_HEARTBEAT = 30000;
+const unsigned long INTERVALO_LEITURA_SEM_MOVIMENTO = 30000;
 unsigned long ultimoHeartbeat = 0;
+unsigned long ultimaLeituraSemMovimento = 0;
 
 const char* ARQUIVO_EVENTOS = "/eventos.txt";
 Preferences preferencias;
@@ -212,6 +214,43 @@ bool enviarHeartbeat() {
     return true;
   }
   Serial.printf("Erro ao enviar heartbeat. HTTP: %d\n", codigoResposta);
+  return false;
+}
+
+bool enviarLeituraSemMovimento() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Wi-Fi desconectado; leitura sem movimento nao enviada.");
+    return false;
+  }
+
+  time_t agora = time(nullptr);
+  if (agora < 100000) {
+    Serial.println("Horario ainda nao sincronizado; leitura sem movimento nao enviada.");
+    return false;
+  }
+
+  struct tm utc;
+  gmtime_r(&agora, &utc);
+  char dataHora[25];
+  strftime(dataHora, sizeof(dataHora), "%Y-%m-%dT%H:%M:%SZ", &utc);
+
+  HTTPClient http;
+  String url = String(SUPABASE_URL) + "/rest/v1/atividade_sensor";
+  http.begin(url);
+  http.addHeader("apikey", SUPABASE_KEY);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Prefer", "return=minimal");
+
+  String dados = String("{\"data_hora\":\"") + dataHora + "\"}";
+  int codigoResposta = http.POST(dados);
+  http.end();
+
+  if (codigoResposta >= 200 && codigoResposta < 300) {
+    Serial.println("Leitura sem movimento enviada ao Supabase.");
+    return true;
+  }
+
+  Serial.printf("Erro ao enviar leitura sem movimento. HTTP: %d\n", codigoResposta);
   return false;
 }
 
@@ -451,6 +490,7 @@ void loop() {
   bool novoMovimento = movimentoAtual && !movimentoAnterior;
 
   if (novoMovimento) {
+    ultimaLeituraSemMovimento = millis();
     numeroEvento++;
     salvarContador();
 
@@ -469,6 +509,11 @@ void loop() {
     inicioAlarme = millis();
     alarmeAtivo = true;
     mostrarEvento();
+  }
+
+  if (!movimentoAtual && millis() - ultimaLeituraSemMovimento >= INTERVALO_LEITURA_SEM_MOVIMENTO) {
+    ultimaLeituraSemMovimento = millis();
+    enviarLeituraSemMovimento();
   }
 
   movimentoAnterior = movimentoAtual;

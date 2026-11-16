@@ -81,7 +81,7 @@ Teste a função acessando `https://SEU-DOMINIO/api/dashboard?hours=24`. Com uma
 2. Use a URL do projeto e uma chave publishable/anon em `SUPABASE_URL` e `SUPABASE_KEY`.
 3. Mantenha `IOT_DEMO_MODE=false` no ambiente conectado ao banco.
 
-Execute também [`supabase/atividade_sensor.sql`](supabase/atividade_sensor.sql) para criar a tabela de não execuções, caso necessário, e permitir sua leitura pelo painel. O script preserva os registros existentes e não configura permissões de escrita.
+Execute também [`supabase/atividade_sensor.sql`](supabase/atividade_sensor.sql) para criar a tabela de leituras sem movimento, caso necessário. O script permite que o ESP32 insira as amostras e que o painel as consulte.
 
 Para informar o estado do ESP32, execute [`supabase/status_dispositivo.sql`](supabase/status_dispositivo.sql). O painel consulta heartbeats recentes quando disponiveis. Para manter o firmware atual sem heartbeat, tambem usa o horario do ultimo movimento recebido como sinal de atividade: ate 2 minutos depois, mostra ONLINE; apos esse prazo, mostra OFFLINE. Isso indica atividade recente, mas nao confirma a conexao Wi-Fi quando nao ha movimento. O estado e recalculado a cada 5 segundos com a aba visivel.
 
@@ -89,9 +89,9 @@ O firmware envia um heartbeat `online` a cada 30 segundos para `status_dispositi
 
 O backend consulta `eventos` (`id`, `numero_evento`, `data_hora`) e `atividade_sensor` (`id`, `data_hora`), sem devolver a chave ao navegador. Cada registro de `atividade_sensor` representa uma leitura sem movimento; sua data deve ser `timestamptz`, por exemplo `2026-09-29T14:00:00-03:00`. A consulta considera até 1.000 registros por tabela e exibe um aviso quando atinge esse limite.
 
-O gráfico apresenta contagens separadas para movimento e ausência de movimento. Os históricos combinam as duas tabelas por data, com filtros por tipo e exportação CSV identificando a tabela de origem. Ausência de registros não é interpretada como ausência de movimento.
+O gráfico apresenta contagens separadas para movimento e ausência de movimento, usando as leituras reais gravadas nas tabelas `eventos` e `atividade_sensor`. Os históricos combinam as duas tabelas por data, com filtros por tipo e exportação CSV identificando a tabela de origem.
 
-O firmware incluído ainda envia apenas execuções para `eventos`. Para receber não execuções reais, o dispositivo precisa gravar as leituras sem movimento em `atividade_sensor` com as permissões de escrita adequadas.
+O firmware envia eventos de movimento para `eventos` e uma leitura sem movimento para `atividade_sensor` a cada 30 segundos enquanto o PIR permanece em LOW. Após movimento, aguarda 30 segundos antes de registrar a próxima amostra sem movimento. Execute o SQL atualizado da tabela `atividade_sensor` e grave o sketch atualizado no ESP32.
 
 **Atenção à segurança:** as políticas permitem inserção anônima de eventos e de heartbeats `online`, então qualquer pessoa com a chave pública pode enviar registros válidos. Não use a chave `service_role` no firmware, no frontend nem no GitHub. Para uso em produção, restrinja a escrita com autenticação ou use uma Edge Function protegida.
 
