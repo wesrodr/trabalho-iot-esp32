@@ -3040,6 +3040,7 @@ html {
 
 .device-control {
   margin-top: 20px;
+  padding: 18px 22px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3053,9 +3054,21 @@ html {
   margin: 5px 0 0;
   color: var(--muted);
 }
+.device-control .button.primary {
+  min-height: 42px;
+  padding: 9px 17px;
+  border-radius: 8px;
+  background: var(--petroleo-700);
+  box-shadow: none;
+}
+.device-control .button.primary:hover {
+  background: #1e555a;
+  box-shadow: 0 4px 12px #0002;
+}
 @media (max-width: 640px) {
   .device-control {
     align-items: stretch;
     flex-direction: column;
+    padding: 16px;
   }
 }

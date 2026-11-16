@@ -115,7 +115,7 @@
     const button = $("device-command-button");
     button.disabled = commandBusy || isDemo || failed;
     button.setAttribute("aria-pressed", String(commandLedOn));
-    button.textContent = commandLedOn ? "Desligar LED" : "Acender LED e mostrar no OLED";
+    button.textContent = commandLedOn ? "Apagar LED" : "Acender LED";
     if (message) text("device-command-status", message);
   }
   async function syncDeviceCommand() {
