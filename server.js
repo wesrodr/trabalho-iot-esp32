@@ -18,6 +18,7 @@ const types = {
 // Arquivos da raiz que podem ser acessados (todo o resto é bloqueado)
 const allowed = new Set(["index.html", "style.css", "script.js", "monitor.js"]);
 const Monitor = require("./monitor");
+const { createDeviceCommandHandler } = require("./device-command");
 
 // Cria o manipulador de /api/dashboard.
 // Recebe env e fetchImpl como parâmetros para facilitar os testes.
@@ -157,6 +158,7 @@ function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
 // Cria o servidor HTTP: rota da API + arquivos estáticos
 function createServer({ env = process.env, fetchImpl = fetch } = {}) {
   const dashboard = createDashboardHandler({ env, fetchImpl });
+  const deviceCommand = createDeviceCommandHandler({ env, fetchImpl });
   return http.createServer((req, res) => {
     // Decodifica o caminho da URL (400 se for inválido)
     let pathname;
@@ -169,6 +171,10 @@ function createServer({ env = process.env, fetchImpl = fetch } = {}) {
     // Rota da API
     if (pathname === "/api/dashboard") {
       void dashboard(req, res);
+      return;
+    }
+    if (pathname === "/api/device-command") {
+      void deviceCommand(req, res);
       return;
     }
     // Arquivos estáticos: somente GET e HEAD

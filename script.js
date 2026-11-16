@@ -90,6 +90,8 @@
   let latest = null;
   let device = null;
   let deviceUnavailable = false;
+  let commandLedOn = false;
+  let commandBusy = false;
   let failed = false;
   let limited = false;
   let lastRefresh = null;
@@ -108,6 +110,52 @@
     const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
     if (seconds < 5) return "agora";
     return seconds < 60 ? `há ${seconds} s` : `há ${Math.floor(seconds / 60)} min`;
+  }
+  function updateDeviceCommandUI(message) {
+    const button = $("device-command-button");
+    button.disabled = commandBusy || isDemo || failed;
+    button.setAttribute("aria-pressed", String(commandLedOn));
+    button.textContent = commandLedOn ? "Desligar LED" : "Acender LED e mostrar no OLED";
+    if (message) text("device-command-status", message);
+  }
+  async function syncDeviceCommand() {
+    if (!loaded || isDemo || failed || commandBusy) {
+      updateDeviceCommandUI(isDemo ? "Controle disponível no modo conectado ao ESP32." : undefined);
+      return;
+    }
+    try {
+      const response = await fetch("/api/device-command", { cache: "no-store" });
+      const result = await response.json();
+      if (!response.ok || typeof result.command?.led !== "boolean")
+        throw new Error(result.error || "Estado do ESP32 indisponível.");
+      commandLedOn = result.command.led;
+      updateDeviceCommandUI(commandLedOn ? "Estado solicitado: LED ligado." : "Estado solicitado: LED desligado.");
+    } catch (error) {
+      updateDeviceCommandUI(error.message || "Não foi possível consultar o comando do ESP32.");
+    }
+  }
+  async function toggleDeviceCommand() {
+    if (commandBusy || isDemo || failed) return;
+    commandBusy = true;
+    updateDeviceCommandUI("Enviando comando ao ESP32...");
+    try {
+      const response = await fetch("/api/device-command", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ led: !commandLedOn }),
+        cache: "no-store",
+      });
+      const result = await response.json();
+      if (!response.ok || typeof result.command?.led !== "boolean")
+        throw new Error(result.error || "Não foi possível enviar o comando.");
+      commandLedOn = result.command.led;
+      updateDeviceCommandUI("Comando salvo. O ESP32 aplica na próxima consulta, em até 5 segundos.");
+    } catch (error) {
+      updateDeviceCommandUI(error.message || "Não foi possível enviar o comando.");
+    } finally {
+      commandBusy = false;
+      updateDeviceCommandUI();
+    }
   }
   // Mostra uma mensagem temporária (toast)
   function notify(message) {
@@ -390,6 +438,7 @@
       lastRefresh = Date.now();
       $("connection-error").hidden = true;
       render();
+      void syncDeviceCommand();
       if (manual) notify("Dados atualizados.");
     } catch (error) {
       if (version !== requestVersion) return;
@@ -479,6 +528,7 @@
   });
   // Botões, paginação e filtros
   $("refresh-button").addEventListener("click", () => refresh(true));
+  $("device-command-button").addEventListener("click", toggleDeviceCommand);
   $("recent-previous").addEventListener("click", () => {
     recentPage--;
     renderRecent();

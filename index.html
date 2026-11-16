@@ -215,6 +215,15 @@
             </div>
           </article>
         </div>
+        <section class="device-control panel" aria-labelledby="device-control-title">
+          <div>
+            <h3 id="device-control-title">Controle do ESP32</h3>
+            <p id="device-command-status" role="status">Consultando o estado do LED...</p>
+          </div>
+          <button type="button" class="button primary" id="device-command-button" aria-pressed="false" disabled>
+            Acender LED e mostrar no OLED
+          </button>
+        </section>
         <!-- Barra de simulação (aparece só no modo demonstração) -->
         <div class="demo-toolbar" id="demo-toolbar" hidden>
           <span

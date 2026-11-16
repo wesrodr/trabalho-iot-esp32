@@ -124,3 +124,10 @@ Testes de interface com Playwright e Microsoft Edge instalado:
 npm.cmd install
 npm.cmd run test:ui
 ```
+
+
+## Controle do LED pelo painel
+
+Execute `supabase/comando_dispositivo.sql` no SQL Editor do Supabase. Configure as credenciais do projeto no firmware e no servidor, depois grave o sketch atualizado. No site conectado ao Supabase, o botao alterna o estado solicitado do LED; o ESP32 consulta o comando a cada 5 segundos, exibe o estado no OLED e controla o GPIO 26. Ligue um LED externo ao GPIO 26 com resistor em serie e o outro terminal ao GND.
+
+A solicitacao e gravada no Supabase. O site confirma que ela foi salva; o ESP32 aplica o comando quando estiver conectado e fizer a proxima consulta. A tabela autoriza a chave anon a alterar esse estado, portanto use uma protecao adicional antes de expor o projeto publicamente.

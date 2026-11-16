@@ -19,6 +19,7 @@ const int DAYLIGHT_OFFSET_SEC = 0;
 
 const int PIR_PIN = 27;
 const int BUZZER_PIN = 25;
+const int LED_PIN = 26;
 const int OLED_SDA = 21;
 const int OLED_SCL = 22;
 
@@ -38,8 +39,12 @@ const unsigned long DURACAO_ALARME = 1000;
 const unsigned long INTERVALO_RETRY_EVENTOS = 2000;
 const unsigned long INTERVALO_HEARTBEAT = 30000;
 const unsigned long INTERVALO_LEITURA_SEM_MOVIMENTO = 30000;
+const unsigned long INTERVALO_CONSULTA_COMANDO = 5000;
 unsigned long ultimoHeartbeat = 0;
 unsigned long ultimaLeituraSemMovimento = 0;
+unsigned long ultimaConsultaComando = 0;
+bool estadoLedComando = false;
+bool estadoLedConhecido = false;
 
 const char* ARQUIVO_EVENTOS = "/eventos.txt";
 Preferences preferencias;
@@ -240,9 +245,13 @@ bool enviarLeituraSemMovimento() {
   http.addHeader("apikey", SUPABASE_KEY);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Prefer", "return=minimal");
+  http.setTimeout(10000);
 
   String dados = String("{\"data_hora\":\"") + dataHora + "\"}";
+  Serial.print("Enviando leitura sem movimento: ");
+  Serial.println(dataHora);
   int codigoResposta = http.POST(dados);
+  String resposta = codigoResposta < 200 || codigoResposta >= 300 ? http.getString() : "";
   http.end();
 
   if (codigoResposta >= 200 && codigoResposta < 300) {
@@ -251,7 +260,76 @@ bool enviarLeituraSemMovimento() {
   }
 
   Serial.printf("Erro ao enviar leitura sem movimento. HTTP: %d\n", codigoResposta);
+  if (resposta.length() > 0) {
+    Serial.print("Resposta do Supabase: ");
+    Serial.println(resposta);
+  }
   return false;
+}
+
+void mostrarComandoPainel(bool ledLigado) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("COMANDO DO PAINEL");
+  display.setCursor(0, 22);
+  display.println(ledLigado ? "LED ACESO" : "LED APAGADO");
+  display.setCursor(0, 42);
+  display.println("Estado atualizado");
+  display.display();
+}
+
+void consultarComandoPainel() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  HTTPClient http;
+  String url = String(SUPABASE_URL) +
+    "/rest/v1/comando_dispositivo?select=id,led&id=eq.1&limit=1";
+  http.begin(url);
+  http.addHeader("apikey", SUPABASE_KEY);
+  http.addHeader("Accept", "application/json");
+  http.setTimeout(2000);
+
+  int codigoResposta = http.GET();
+  if (codigoResposta < 200 || codigoResposta >= 300) {
+    Serial.printf("Erro ao consultar comando do painel. HTTP: %d\n", codigoResposta);
+    String resposta = http.getString();
+    if (resposta.length() > 0) Serial.println(resposta);
+    http.end();
+    return;
+  }
+
+  String resposta = http.getString();
+  http.end();
+
+  int chaveLed = resposta.indexOf("\"led\"");
+  int separador = chaveLed >= 0 ? resposta.indexOf(':', chaveLed) : -1;
+  if (separador < 0) {
+    Serial.println("Resposta do comando sem campo led.");
+    return;
+  }
+
+  int valor = separador + 1;
+  while (valor < resposta.length() &&
+         (resposta[valor] == ' ' || resposta[valor] == '\n' ||
+          resposta[valor] == '\r' || resposta[valor] == '\t')) valor++;
+  bool ledLigado;
+  if (resposta.startsWith("true", valor)) ledLigado = true;
+  else if (resposta.startsWith("false", valor)) ledLigado = false;
+  else {
+    Serial.println("Estado de LED invalido no comando do painel.");
+    return;
+  }
+
+  if (!estadoLedConhecido || ledLigado != estadoLedComando) {
+    bool houveMudanca = estadoLedConhecido;
+    estadoLedConhecido = true;
+    estadoLedComando = ledLigado;
+    digitalWrite(LED_PIN, ledLigado ? HIGH : LOW);
+    Serial.println(ledLigado ? "Comando recebido: LED aceso." : "Comando recebido: LED apagado.");
+    if (houveMudanca || ledLigado) mostrarComandoPainel(ledLigado);
+  }
 }
 
 void enviarPrimeiroEvento() {
@@ -452,6 +530,8 @@ void setup() {
   Serial.begin(115200);
   pinMode(PIR_PIN, INPUT);
   pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
   noTone(BUZZER_PIN);
 
   Wire.begin(OLED_SDA, OLED_SCL);
@@ -525,5 +605,11 @@ void loop() {
   }
 
   sincronizarEventos();
+
+  if (ultimaConsultaComando == 0 || millis() - ultimaConsultaComando >= INTERVALO_CONSULTA_COMANDO) {
+    ultimaConsultaComando = millis();
+    consultarComandoPainel();
+  }
+
   delay(20);
 }
