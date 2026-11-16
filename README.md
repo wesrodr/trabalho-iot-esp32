@@ -13,22 +13,30 @@ Projeto acadêmico de monitoramento de movimento com sensor PIR, ESP32, Supabase
 ```text
 .
 ├── api/
-│   └── dashboard.js                 # Função serverless da Vercel
+│   ├── dashboard.js                 # Função serverless da Vercel (painel)
+│   └── mining.js                    # Função serverless da Vercel (mineração)
 ├── assets/                          # Imagens, ícones e prompt da arte
 ├── firmware/
 │   └── esp32_monitoramento.ino       # Código do ESP32
 ├── supabase/
-│   └── schema.sql                   # Tabela, permissões e políticas RLS
+│   ├── schema.sql                   # Tabela eventos, permissões e RLS
+│   ├── atividade_sensor.sql         # Tabela de leituras sem movimento
+│   └── status_dispositivo.sql       # Tabela de heartbeat e status do ESP32
 ├── tests/
 │   ├── browser/                     # Testes de interface com Playwright
+│   ├── mining.test.js               # Testes de K-Means e Isolation Forest
 │   ├── monitor.test.js              # Testes de regras e dados
 │   └── server.test.js               # Testes das rotas e integração
 ├── .env.example                     # Modelo das variáveis locais
-├── index.html                       # Página do painel
+├── analise_mineracao.py             # Script Python com Pandas, Scikit-learn e NumPy
+├── index.html                       # Página do painel de monitoramento
+├── mineracao.html                   # Página dedicada de Mineração de Dados
+├── mineracao-script.js              # Interações e visualizações da mineração
+├── mining.js                        # Motor dos algoritmos (K-Means e Isolation Forest)
 ├── monitor.js                       # Regras de datas, eventos e gráfico
-├── script.js                        # Interações da interface
-├── server.js                        # Servidor local e handler compartilhado
-├── style.css                        # Estilos
+├── script.js                        # Interações do painel de monitoramento
+├── server.js                        # Servidor local e handlers compartilhados
+├── style.css                        # Estilos responsivos (temas claro/escuro)
 ├── package.json
 └── package-lock.json
 ```
@@ -94,6 +102,39 @@ O gráfico apresenta contagens separadas para movimento e ausência de movimento
 O firmware envia eventos de movimento para `eventos` e uma leitura sem movimento para `atividade_sensor` a cada 30 segundos enquanto o PIR permanece em LOW. Após movimento, aguarda 30 segundos antes de registrar a próxima amostra sem movimento. Execute o SQL atualizado da tabela `atividade_sensor` e grave o sketch atualizado no ESP32.
 
 **Atenção à segurança:** as políticas permitem inserção anônima de eventos e de heartbeats `online`, então qualquer pessoa com a chave pública pode enviar registros válidos. Não use a chave `service_role` no firmware, no frontend nem no GitHub. Para uso em produção, restrinja a escrita com autenticação ou use uma Edge Function protegida.
+
+## Mineração de Dados (K-Means e Isolation Forest)
+
+Acesse a página dedicada pelo menu superior clicando em **Mineração de Dados** (ou abra `mineracao.html`).
+
+O módulo processa os registros reais da tabela `eventos` (e `atividade_sensor`) do Supabase e aplica dois algoritmos de Inteligência Computacional:
+
+1. **K-Means (Agrupamento de Padrões)**:
+   - Agrupa as janelas temporais de acordo com a hora, dia da semana, densidade e frequência de movimentos.
+   - Os grupos são ordenados com base na média real de movimentos observada:
+     - **Baixa movimentação** (verde)
+     - **Média movimentação** (azul)
+     - **Alta movimentação** (coral)
+   - Exibe gráfico de dispersão (Hora vs Movimentos), gráfico horário com médias por período e identificação de picos de atividade e horários mais calmos.
+
+2. **Isolation Forest (Detecção de Anomalias Estatísticas)**:
+   - Identifica desvios e eventos que fogem estatisticamente da rotina do ambiente (ex: movimentações intensas em horários de calmaria).
+   - Apresenta taxa de anomalias, linha temporal com destaque visual para pontos incomuns e tabela descritiva dos eventos atípicos.
+   - *Nota metodológica:* o algoritmo indica comportamentos estatisticamente incomuns, e não ameaças ou invasões.
+
+### Execução via Python (Pandas, NumPy, Scikit-learn)
+
+O projeto também disponibiliza o script `analise_mineracao.py` para processar e gerar relatórios no terminal:
+
+```powershell
+python analise_mineracao.py
+```
+
+Para saída estrita em JSON:
+
+```powershell
+python analise_mineracao.py --json --clusters 3 --contamination 0.08
+```
 
 ## Firmware do ESP32
 

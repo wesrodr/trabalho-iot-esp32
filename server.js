@@ -16,8 +16,17 @@ const types = {
   ".ico": "image/x-icon",
 };
 // Arquivos da raiz que podem ser acessados (todo o resto é bloqueado)
-const allowed = new Set(["index.html", "style.css", "script.js", "monitor.js"]);
+const allowed = new Set([
+  "index.html",
+  "style.css",
+  "script.js",
+  "monitor.js",
+  "mineracao.html",
+  "mineracao-script.js",
+  "mining.js",
+]);
 const Monitor = require("./monitor");
+const DataMining = require("./mining");
 const { createDeviceCommandHandler } = require("./device-command");
 
 // Cria o manipulador de /api/dashboard.
@@ -155,10 +164,83 @@ function createDashboardHandler({ env = process.env, fetchImpl = fetch } = {}) {
   };
 }
 
+// Cria o manipulador de /api/mining para análise com K-Means e Isolation Forest
+function createMiningHandler({ env = process.env, fetchImpl = fetch } = {}) {
+  const url = env.SUPABASE_URL || "";
+  const key = env.SUPABASE_KEY || "";
+  const demo = env.IOT_DEMO_MODE === "true" || (!url && !key && env.IOT_DEMO_MODE !== "false");
+
+  function json(res, status, body) {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(JSON.stringify(body));
+  }
+
+  return async function miningHandler(req, res) {
+    const requestUrl = new URL(req.url, "http://localhost");
+    if (req.method !== "GET" && req.method !== "POST") {
+      res.setHeader("Allow", "GET, POST");
+      return json(res, 405, { error: "Método não permitido." });
+    }
+
+    const intervalMinutes = Math.max(5, Math.min(120, Number(requestUrl.searchParams.get("interval") || 30)));
+    const k = Math.max(2, Math.min(6, Number(requestUrl.searchParams.get("k") || 3)));
+    const contamination = Math.max(0.01, Math.min(0.25, Number(requestUrl.searchParams.get("contamination") || 0.08)));
+
+    if (demo) {
+      const demoEvents = Monitor.demoReadings();
+      const analysis = DataMining.analyze(demoEvents, { intervalMinutes, k, contamination });
+      return json(res, 200, {
+        mode: "demo",
+        ...analysis,
+      });
+    }
+
+    try {
+      const projectUrl = new URL(url);
+      if (
+        !key ||
+        projectUrl.protocol !== "https:" ||
+        !projectUrl.hostname.endsWith(".supabase.co") ||
+        projectUrl.username ||
+        projectUrl.password ||
+        projectUrl.port
+      ) {
+        throw new Error("Invalid server configuration");
+      }
+
+      const headers = { apikey: key };
+      if (key.startsWith("eyJ")) headers.Authorization = `Bearer ${key}`;
+
+      const response = await fetchImpl(
+        `${projectUrl.origin}/rest/v1/eventos?select=id,numero_evento,data_hora&order=id.desc&limit=1000`,
+        { headers, signal: AbortSignal.timeout(12000), cache: "no-store" },
+      );
+
+      if (!response.ok) throw new Error("Upstream unavailable");
+      const rows = await response.json();
+      if (!Array.isArray(rows)) throw new Error("Invalid readings");
+
+      const analysis = DataMining.analyze(rows, { intervalMinutes, k, contamination });
+      return json(res, 200, {
+        mode: "live",
+        ...analysis,
+      });
+    } catch {
+      return json(res, 503, {
+        error: "Não foi possível carregar os registros do Supabase para mineração.",
+      });
+    }
+  };
+}
+
 // Cria o servidor HTTP: rota da API + arquivos estáticos
 function createServer({ env = process.env, fetchImpl = fetch } = {}) {
   const dashboard = createDashboardHandler({ env, fetchImpl });
   const deviceCommand = createDeviceCommandHandler({ env, fetchImpl });
+  const mining = createMiningHandler({ env, fetchImpl });
   return http.createServer((req, res) => {
     // Decodifica o caminho da URL (400 se for inválido)
     let pathname;
@@ -168,13 +250,17 @@ function createServer({ env = process.env, fetchImpl = fetch } = {}) {
       res.writeHead(400).end();
       return;
     }
-    // Rota da API
+    // Rotas da API
     if (pathname === "/api/dashboard") {
       void dashboard(req, res);
       return;
     }
     if (pathname === "/api/device-command") {
       void deviceCommand(req, res);
+      return;
+    }
+    if (pathname === "/api/mining") {
+      void mining(req, res);
       return;
     }
     // Arquivos estáticos: somente GET e HEAD
@@ -213,4 +299,4 @@ if (require.main === module) {
     console.log("ESP32 IoT disponível em http://localhost:" + (process.env.PORT || 3000)),
   );
 }
-module.exports = { createServer, createDashboardHandler };
+module.exports = { createServer, createDashboardHandler, createMiningHandler };

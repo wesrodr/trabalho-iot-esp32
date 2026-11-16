@@ -3072,3 +3072,361 @@ html {
     padding: 16px;
   }
 }
+
+/* ==========================================================
+   15. PÁGINA DE MINERAÇÃO DE DADOS (K-MEANS & ISOLATION FOREST)
+   ========================================================== */
+.mining-header-sub {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.mining-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 24px;
+}
+.mining-kpi-card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: 0 4px 18px #254b800a;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.mining-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px #254b8014;
+}
+.mining-kpi-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.mining-kpi-icon.blue { background: #e8f2fe; color: #1263df; }
+.mining-kpi-icon.green { background: #e6f7f3; color: #009e80; }
+.mining-kpi-icon.purple { background: #f0eafb; color: #7952b3; }
+.mining-kpi-icon.coral { background: #feeef1; color: #fa6c7e; }
+
+.mining-kpi-content {
+  display: flex;
+  flex-direction: column;
+}
+.mining-kpi-val {
+  font: 800 28px/1.1 var(--heading);
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.mining-kpi-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 4px;
+}
+.mining-kpi-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.mining-toolbar {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.mining-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.mining-control-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mining-control-group label {
+  font-weight: 600;
+  color: var(--ink);
+}
+.mining-control-group .select-wrap {
+  min-width: 150px;
+}
+
+.mining-section-block {
+  margin-top: 28px;
+}
+.mining-panel {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px 28px;
+  box-shadow: 0 6px 24px #254b800a;
+}
+.mining-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.mining-panel-title-area h3 {
+  margin: 0;
+  font: 750 20px/1.3 var(--heading);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mining-panel-title-area p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: var(--muted);
+  max-width: 820px;
+}
+
+.mining-academic-note {
+  background: #fff9ed;
+  border: 1px solid #f9e2b0;
+  border-left: 4px solid #ed8f13;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #7a4f00;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mining-academic-note i {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.mining-grid-2col {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.mining-grid-1col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.cluster-cards-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 20px;
+}
+.cluster-card {
+  background: #fbfdff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 10px #00000005;
+}
+.cluster-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+.cluster-card.cluster-low::before { background: #009e80; }
+.cluster-card.cluster-med::before { background: #2379f5; }
+.cluster-card.cluster-high::before { background: #fa6c7e; }
+
+.cluster-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cluster-card-title {
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cluster-metric {
+  margin-top: 10px;
+}
+.cluster-metric-val {
+  font: 800 24px/1 var(--heading);
+  color: var(--ink);
+}
+.cluster-metric-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.cluster-progress-bar {
+  height: 6px;
+  background: #eef3f9;
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+.cluster-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.5s ease;
+}
+.cluster-progress-fill.green { background: #009e80; }
+.cluster-progress-fill.blue { background: #2379f5; }
+.cluster-progress-fill.coral { background: #fa6c7e; }
+
+.mining-chart-box {
+  background: #fbfdff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  position: relative;
+}
+.mining-chart-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mining-chart-svg {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  display: block;
+}
+
+.anomaly-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.anomaly-tag.is-anomaly {
+  background: #feeef1;
+  color: #d93850;
+  border: 1px solid #fcced6;
+}
+.anomaly-tag.is-normal {
+  background: #e6f7f3;
+  color: #00876d;
+  border: 1px solid #b7edd1;
+}
+
+.mining-meta-footer {
+  margin-top: 24px;
+  padding: 16px 22px;
+  background: #f8fbff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.mining-meta-footer strong {
+  color: var(--ink);
+}
+
+/* Modo escuro para mineração */
+[data-theme="dark"] .mining-kpi-card,
+[data-theme="dark"] .mining-toolbar,
+[data-theme="dark"] .mining-panel,
+[data-theme="dark"] .cluster-card,
+[data-theme="dark"] .mining-chart-box,
+[data-theme="dark"] .mining-meta-footer {
+  background: #19263a;
+  border-color: #2c3d56;
+  box-shadow: 0 4px 20px #00000020;
+}
+[data-theme="dark"] .mining-kpi-icon.blue { background: #1e3352; color: #70acff; }
+[data-theme="dark"] .mining-kpi-icon.green { background: #183832; color: #58d7b5; }
+[data-theme="dark"] .mining-kpi-icon.purple { background: #2f2747; color: #bf9bf5; }
+[data-theme="dark"] .mining-kpi-icon.coral { background: #44222b; color: #ff8296; }
+[data-theme="dark"] .mining-academic-note {
+  background: #332616;
+  border-color: #553e1a;
+  color: #f7ca75;
+}
+[data-theme="dark"] .cluster-progress-bar {
+  background: #23344d;
+}
+[data-theme="dark"] .anomaly-tag.is-anomaly {
+  background: #471f28;
+  color: #ff9cad;
+  border-color: #6b2d39;
+}
+[data-theme="dark"] .anomaly-tag.is-normal {
+  background: #183832;
+  color: #6ee7b7;
+  border-color: #22574b;
+}
+
+/* Responsividade da mineração */
+@media (max-width: 1080px) {
+  .mining-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .mining-grid-2col {
+    grid-template-columns: 1fr;
+  }
+  .cluster-cards-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 720px) {
+  .mining-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+  .cluster-cards-container {
+    grid-template-columns: 1fr;
+  }
+  .mining-panel {
+    padding: 18px 16px;
+  }
+  .mining-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .mining-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

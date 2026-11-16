@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f9ff" />
+    <!-- Aplica o tema salvo antes da pintura da página -->
+    <script>
+      (() => {
+        let theme;
+        try {
+          theme = localStorage.getItem("iot-theme");
+        } catch {}
+        if (theme !== "light" && theme !== "dark")
+          theme = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "dark" ? "#101827" : "#f5f9ff";
+      })();
+    </script>
+    <meta
+      name="description"
+      content="Mineração de dados aplicada ao monitoramento IoT com ESP32: algoritmos K-Means e Isolation Forest para análise de padrões e detecção de anomalias."
+    />
+    <title>Mineração de Dados — ESP32 IoT</title>
+    <!-- Ícone e fontes -->
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400..700&family=Manrope:wght@400..800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="monitor.js"></script>
+    <script defer src="mining.js"></script>
+    <script defer src="mineracao-script.js"></script>
+  </head>
+  <body>
+    <!-- Link de acessibilidade -->
+    <a class="skip-link" href="#mining-content">Pular para o conteúdo principal</a>
+
+    <!-- CABEÇALHO -->
+    <header class="header">
+      <div class="header-inner">
+        <a class="brand" href="index.html" aria-label="ESP32 IoT, início">
+          <img src="assets/favicon.svg" alt="" width="49" height="49" />
+          <span><strong>ESP32 <b>IoT</b></strong><small>Monitoramento inteligente</small></span>
+        </a>
+        <nav class="nav" aria-label="Navegação principal">
+          <a href="index.html" class="nav-link">
+            <i data-icon="walk"></i><span>Monitoramento</span>
+          </a>
+          <a href="mineracao.html" class="nav-link active" aria-current="page">
+            <i data-icon="cpu"></i><span>Mineração de Dados</span>
+          </a>
+          <button type="button" class="nav-link" data-open="history-dialog">
+            <i data-icon="clock"></i><span>Histórico</span>
+          </button>
+          <button type="button" class="nav-link" data-open="about-dialog">
+            <i data-icon="info"></i><span>Sobre</span>
+          </button>
+        </nav>
+        <div class="header-actions">
+          <button
+            class="theme-toggle"
+            id="theme-toggle"
+            type="button"
+            aria-label="Ativar modo escuro"
+            title="Ativar modo escuro"
+          >
+            <i data-icon="moon" class="theme-moon"></i><i data-icon="sun" class="theme-sun"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="container" id="mining-content" style="padding-bottom: 60px;">
+      <!-- TÍTULO E CABEÇALHO DA SEÇÃO -->
+      <section class="monitor-section" aria-labelledby="mining-title" style="margin-top: 24px;">
+        <div class="section-heading">
+          <div>
+            <span class="section-kicker">APRENDIZADO DE MÁQUINA APLICADO A IOT</span>
+            <h1 id="mining-title" style="margin: 4px 0 0; font: 800 32px/1.2 var(--heading);">
+              Mineração de Dados
+              <span class="badge normal" id="mode-badge">CONECTADO</span>
+            </h1>
+            <p class="mining-header-sub">Análise inteligente de padrões e detecção de anomalias.</p>
+          </div>
+          <div class="refresh-info">
+            <span class="dot green" id="refresh-dot"></span>
+            <span id="refresh-label">Sincronizando com Supabase...</span>
+            <button
+              type="button"
+              class="icon-button"
+              id="refresh-button"
+              aria-label="Atualizar dados agora"
+              title="Atualizar dados agora"
+            >
+              <i data-icon="refresh"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="alert-banner" id="connection-error" role="alert" hidden></div>
+        
+        <div class="mining-academic-note" id="insufficient-data-banner" hidden>
+          <i data-icon="info"></i>
+          <div>
+            <strong>Acumulando leituras:</strong>
+            <span id="insufficient-msg">Aguardando mais eventos do sensor PIR no Supabase para executar o K-Means e o Isolation Forest com significância estatística.</span>
+          </div>
+        </div>
+
+        <!-- BARRA DE CONFIGURAÇÃO DOS ALGORITMOS -->
+        <div class="mining-toolbar">
+          <div class="mining-controls">
+            <div class="mining-control-group">
+              <label for="select-k">Grupos (K):</label>
+              <div class="select-wrap">
+                <i data-icon="cpu"></i>
+                <select id="select-k" aria-label="Número de grupos K-Means">
+                  <option value="3" selected>K = 3 (Recomendado)</option>
+                  <option value="2">K = 2 (Bimodal)</option>
+                  <option value="4">K = 4 (Detalhado)</option>
+                  <option value="5">K = 5 (Avançado)</option>
+                </select>
+                <i data-icon="chevron-down"></i>
+              </div>
+            </div>
+
+            <div class="mining-control-group">
+              <label for="select-interval">Janela Temporal:</label>
+              <div class="select-wrap">
+                <i data-icon="calendar"></i>
+                <select id="select-interval" aria-label="Intervalo de agregação temporal">
+                  <option value="15">15 minutos</option>
+                  <option value="30" selected>30 minutos (Recomendado)</option>
+                  <option value="60">60 minutos (1 hora)</option>
+                </select>
+                <i data-icon="chevron-down"></i>
+              </div>
+            </div>
+
+            <div class="mining-control-group">
+              <label for="select-contamination">Sensibilidade de Anomalias:</label>
+              <div class="select-wrap">
+                <i data-icon="shield"></i>
+                <select id="select-contamination" aria-label="Taxa de contaminação Isolation Forest">
+                  <option value="0.05">5% (Mais restrito)</option>
+                  <option value="0.08" selected>8% (Padrão)</option>
+                  <option value="0.12">12% (Mais sensível)</option>
+                </select>
+                <i data-icon="chevron-down"></i>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" class="button secondary small" id="btn-recalcular">
+            <i data-icon="refresh"></i> Recalcular Modelos
+          </button>
+        </div>
+
+        <!-- INDICADORES GERAIS (KPI CARDS) -->
+        <div class="mining-kpi-grid">
+          <div class="mining-kpi-card">
+            <div class="mining-kpi-icon blue">
+              <i data-icon="walk"></i>
+            </div>
+            <div class="mining-kpi-content">
+              <span class="mining-kpi-val" id="kpi-total-movimentos">0</span>
+              <span class="mining-kpi-label">Movimentos Registrados</span>
+              <span class="mining-kpi-sub">Detecções PIR no banco</span>
+            </div>
+          </div>
+
+          <div class="mining-kpi-card">
+            <div class="mining-kpi-icon green">
+              <i data-icon="calendar"></i>
+            </div>
+            <div class="mining-kpi-content">
+              <span class="mining-kpi-val" id="kpi-total-periodos">0</span>
+              <span class="mining-kpi-label">Períodos Analisados</span>
+              <span class="mining-kpi-sub" id="kpi-sub-periodos">Janelas de 30 min</span>
+            </div>
+          </div>
+
+          <div class="mining-kpi-card">
+            <div class="mining-kpi-icon purple">
+              <i data-icon="cpu"></i>
+            </div>
+            <div class="mining-kpi-content">
+              <span class="mining-kpi-val" id="kpi-padroes-identificados">3</span>
+              <span class="mining-kpi-label">Padrões Identificados</span>
+              <span class="mining-kpi-sub">Clusters K-Means</span>
+            </div>
+          </div>
+
+          <div class="mining-kpi-card">
+            <div class="mining-kpi-icon coral">
+              <i data-icon="shield"></i>
+            </div>
+            <div class="mining-kpi-content">
+              <span class="mining-kpi-val" id="kpi-anomalias-detectadas">0</span>
+              <span class="mining-kpi-label">Anomalias Detectadas</span>
+              <span class="mining-kpi-sub" id="kpi-sub-anomalias">0% dos períodos</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 1: K-MEANS -->
+        <div class="mining-section-block">
+          <div class="mining-panel">
+            <div class="mining-panel-header">
+              <div class="mining-panel-title-area">
+                <h3><i data-icon="cpu"></i> Algoritmo K-Means — Agrupamento de Padrões</h3>
+                <p>
+                  O algoritmo K-Means agrupa os períodos monitorados com características estatísticas semelhantes
+                  (hora, dia da semana, densidade e frequência de eventos). As categorias são ordenadas diretamente pelos
+                  valores médios de movimentação calculados para cada cluster.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="badge normal" id="kmeans-status-badge">K = 3 CONVERGIDO</span>
+              </div>
+            </div>
+
+            <!-- Resumo dos 3 grupos (Baixa, Média, Alta movimentação) -->
+            <div class="cluster-cards-container" id="cluster-cards-container">
+              <!-- Preenchido via JavaScript -->
+            </div>
+
+            <!-- Destaques de maior e menor atividade -->
+            <div style="display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px;">
+              <div style="flex: 1; min-width: 260px; padding: 14px 18px; background: #f4f8fd; border: 1px solid var(--border); border-radius: 10px;">
+                <small style="color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Pico de Maior Atividade</small>
+                <div style="font: 750 18px/1.2 var(--heading); color: var(--ink); margin-top: 4px;" id="highlight-peak-period">—</div>
+                <small style="color: var(--muted);">Maior concentração histórica de movimentação</small>
+              </div>
+              <div style="flex: 1; min-width: 260px; padding: 14px 18px; background: #f4f8fd; border: 1px solid var(--border); border-radius: 10px;">
+                <small style="color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.04em;">Período Mais Calmo</small>
+                <div style="font: 750 18px/1.2 var(--heading); color: var(--ink); margin-top: 4px;" id="highlight-calm-period">—</div>
+                <small style="color: var(--muted);">Menor índice de acionamentos do sensor PIR</small>
+              </div>
+            </div>
+
+            <!-- Gráficos do K-Means -->
+            <div class="mining-grid-2col" style="margin-top: 22px;">
+              <div class="mining-chart-box">
+                <div class="mining-chart-title">
+                  <span><i data-icon="chart"></i> Dispersão dos Padrões (Hora x Movimentos)</span>
+                  <small style="font-weight: normal; color: var(--muted);">Pontos coloridos por cluster</small>
+                </div>
+                <div style="position: relative;">
+                  <svg id="scatter-chart" class="mining-chart-svg" viewBox="0 0 600 240" role="img" aria-label="Gráfico de dispersão K-Means"></svg>
+                  <div class="chart-tooltip" id="scatter-tooltip" role="status" hidden></div>
+                </div>
+              </div>
+
+              <div class="mining-chart-box">
+                <div class="mining-chart-title">
+                  <span><i data-icon="calendar"></i> Movimentação por Horário do Dia</span>
+                  <small style="font-weight: normal; color: var(--muted);">Média de movimentos (0h às 23h)</small>
+                </div>
+                <div style="position: relative;">
+                  <svg id="hourly-chart" class="mining-chart-svg" viewBox="0 0 450 240" role="img" aria-label="Média horária de movimentos"></svg>
+                  <div class="chart-tooltip" id="hourly-tooltip" role="status" hidden></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEÇÃO 2: ISOLATION FOREST -->
+        <div class="mining-section-block">
+          <div class="mining-panel">
+            <div class="mining-panel-header">
+              <div class="mining-panel-title-area">
+                <h3><i data-icon="shield"></i> Algoritmo Isolation Forest — Detecção de Anomalias</h3>
+                <p>
+                  O Isolation Forest avalia o comportamento histórico e isola observações que se afastam da dinâmica habitual.
+                  Eventos isolados com menor profundidade nas árvores de decisão possuem scores elevados de anomalia.
+                </p>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span class="badge alert" id="anomaly-badge">0 ANOMALIAS</span>
+              </div>
+            </div>
+
+            <!-- Aviso acadêmico explícito -->
+            <div class="mining-academic-note">
+              <i data-icon="info"></i>
+              <div>
+                <strong>Atenção metodológica:</strong>
+                O algoritmo identifica comportamentos <em>estatisticamente diferentes</em> dos padrões observados (ex: picos incomuns, horários atípicos).
+                Uma anomalia não deve ser classificada automaticamente como invasão ou ameaça, podendo decorrer de rotinas diferenciadas ou fatores ambientais.
+              </div>
+            </div>
+
+            <!-- Gráfico Temporal de Detecção de Anomalias -->
+            <div class="mining-chart-box" style="margin-top: 10px;">
+              <div class="mining-chart-title">
+                <span><i data-icon="chart"></i> Linha Temporal de Ocorrências e Anomalias</span>
+                <span style="font-size: 12px; font-weight: normal; color: var(--muted);">
+                  <span class="dot green" style="display: inline-block; vertical-align: middle;"></span> Normal &nbsp;
+                  <span class="dot coral" style="display: inline-block; vertical-align: middle;"></span> Ponto Anômalo
+                </span>
+              </div>
+              <div style="position: relative;">
+                <svg id="anomaly-chart" class="mining-chart-svg" viewBox="0 0 800 240" role="img" aria-label="Linha temporal com destaque de anomalias"></svg>
+                <div class="chart-tooltip" id="anomaly-tooltip" role="status" hidden></div>
+              </div>
+            </div>
+
+            <!-- Tabela de eventos anômalos -->
+            <div style="margin-top: 24px;">
+              <h4 style="font: 700 16px/1.3 var(--heading); margin: 0 0 12px; display: flex; align-items: center; justify-content: space-between;">
+                <span>Eventos Identificados como Incomuns</span>
+                <small style="color: var(--muted); font-size: 13px; font-weight: normal;" id="anomaly-table-count">0 registros</small>
+              </h4>
+              
+              <div class="table-wrap">
+                <table class="events-table">
+                  <thead>
+                    <tr>
+                      <th>Data</th>
+                      <th>Horário</th>
+                      <th>Dia</th>
+                      <th>Movimentos</th>
+                      <th>Frequência</th>
+                      <th>Score Anomalia</th>
+                      <th>Classificação</th>
+                    </tr>
+                  </thead>
+                  <tbody id="anomalies-table-body">
+                    <tr>
+                      <td colspan="7" style="text-align: center; color: var(--muted); padding: 24px;">
+                        Nenhuma anomalia estatística detectada no período analisado.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- METADADOS E HISTÓRICO DA EXECUÇÃO -->
+        <div class="mining-meta-footer">
+          <div>
+            <span>Última execução: <strong id="meta-timestamp">—</strong></span>
+            <span style="margin: 0 10px; opacity: 0.4;">|</span>
+            <span>Tempo de processamento: <strong id="meta-duration">0 ms</strong></span>
+            <span style="margin: 0 10px; opacity: 0.4;">|</span>
+            <span>Registros utilizados: <strong id="meta-records">0</strong></span>
+          </div>
+          <div>
+            <span>Status: <strong id="meta-status" style="color: var(--green);">Pronto</strong></span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- RODAPÉ -->
+    <footer class="footer container">
+      <span>ESP32 <b>IoT</b><span class="footer-divider">/</span> Mineração de Dados &amp; Computação Embarcada</span>
+    </footer>
+
+    <!-- DIÁLOGO: HISTÓRICO -->
+    <dialog id="history-dialog" class="dialog history-dialog" aria-labelledby="history-title">
+      <div class="dialog-header">
+        <div>
+          <span class="section-kicker">ATIVIDADE DO AMBIENTE</span>
+          <h2 id="history-title">Histórico do sensor</h2>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Fechar">
+          <i data-icon="x"></i>
+        </button>
+      </div>
+      <p class="dialog-intro">Consulte todos os eventos brutos registrados pelo ESP32 no Supabase.</p>
+      <div class="table-wrap">
+        <table class="events-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Evento</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="history-events-body"></tbody>
+        </table>
+      </div>
+      <button type="button" class="button secondary full-width" data-close style="margin-top: 16px;">
+        Fechar Histórico
+      </button>
+    </dialog>
+
+    <!-- DIÁLOGO: SOBRE -->
+    <dialog id="about-dialog" class="dialog about-dialog" aria-labelledby="about-title">
+      <div class="dialog-header">
+        <div>
+          <span class="section-kicker">TECNOLOGIA COM PROPÓSITO</span>
+          <h2 id="about-title">Mineração de Dados no IoT</h2>
+        </div>
+        <button type="button" class="icon-button" data-close aria-label="Fechar">
+          <i data-icon="x"></i>
+        </button>
+      </div>
+      <p class="dialog-intro">
+        Aplicação prática de Mineração de Dados sobre eventos reais de sensor PIR: agrupamento não supervisionado com
+        <strong>K-Means</strong> e detecção de anomalias com <strong>Isolation Forest</strong>.
+      </p>
+      <div class="about-note">
+        <i data-icon="graduation"></i>
+        <div>
+          <span>Piauí Instituto de Tecnologia — PIT</span>
+          <p style="margin: 4px 0 0; font-size: 13px; color: var(--muted);">Fundamentos de Computação Embarcada e IoT</p>
+          <ul class="participants-list" style="margin-top: 8px;">
+            <li><strong>Gisele Maria</strong></li>
+            <li><strong>Juliano Moraes</strong></li>
+            <li><strong>Markus Aurélius</strong></li>
+            <li><strong>Sheylla Pereira</strong></li>
+            <li><strong>Wesley Ruan</strong></li>
+          </ul>
+        </div>
+      </div>
+      <button type="button" class="button primary full-width" data-close>
+        Voltar à Análise <i data-icon="arrow-right"></i>
+      </button>
+    </dialog>
+
+    <!-- TOAST -->
+    <div class="toast" id="toast" role="status" hidden></div>
+  </body>
+</html>

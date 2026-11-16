@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { createServer, createDashboardHandler } = require('../server');
+const { createServer, createDashboardHandler, createMiningHandler } = require('../server');
 
 async function start(t, options) {
   const server = createServer(options);
@@ -95,4 +95,23 @@ test('dashboard handler supports the Vercel request and response interface', asy
   assert.equal(result.headers['Content-Type'], 'application/json; charset=utf-8');
   assert.equal(result.body.mode, 'demo');
   assert.ok(Array.isArray(result.body.events));
+});
+
+test('mining handler supports demo analysis and Vercel interface', async () => {
+  const handler = createMiningHandler({ env: { IOT_DEMO_MODE: 'true' } });
+  const result = await new Promise(resolve => {
+    const response = {
+      headers: {},
+      writeHead(status, headers) { this.status = status; Object.assign(this.headers, headers); },
+      setHeader(name, value) { this.headers[name] = value; },
+      end(body) { resolve({ status: this.status, headers: this.headers, body: JSON.parse(body) }); }
+    };
+    handler({ method: 'GET', url: '/api/mining?interval=30&k=3' }, response);
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, 'demo');
+  assert.equal(result.body.status, 'sucesso');
+  assert.equal(result.body.kmeans.clusters.length, 3);
+  assert.ok(result.body.isolationForest.totalAnalyzed > 0);
+  assert.ok(Array.isArray(result.body.points));
 });
